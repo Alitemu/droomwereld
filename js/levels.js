@@ -525,26 +525,122 @@ class Level5Puzzle extends Level {
         super();
         this.name = 'Schuifpuzzel';
         this.timeLimit = 90;
-        this.playerProgress = 0;
-        this.robotProgress = 0;
+        this.tileSize = 60;
+        this.gridSize = 4;
+        this.tiles = [];
+        this.emptyTile = 15;
+        this.moves = 0;
+        this.playerTimer = 0;
+        this.robotTimer = 0;
+        this.robotMoves = 0;
     }
 
     init(width, height) {
         super.init(width, height);
-        this.playerProgress = 0;
-        this.robotProgress = 0;
+        this.tiles = this.createPuzzle();
+        this.moves = 0;
+        this.playerTimer = 0;
+        this.robotTimer = 0;
+        this.robotMoves = 0;
+
+        document.addEventListener('click', (e) => this.handlePuzzleClick(e));
+    }
+
+    createPuzzle() {
+        const tiles = [];
+        for (let i = 0; i < 16; i++) {
+            tiles.push(i);
+        }
+        // Shuffle tiles
+        for (let i = tiles.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+        }
+        return tiles;
+    }
+
+    handlePuzzleClick(e) {
+        const canvas = document.getElementById('gameCanvas');
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const gridStartX = 150;
+        const gridStartY = 200;
+
+        for (let i = 0; i < 16; i++) {
+            const row = Math.floor(i / 4);
+            const col = i % 4;
+            const tileX = gridStartX + col * this.tileSize;
+            const tileY = gridStartY + row * this.tileSize;
+
+            if (x > tileX && x < tileX + this.tileSize &&
+                y > tileY && y < tileY + this.tileSize) {
+                this.moveTile(i);
+            }
+        }
+    }
+
+    moveTile(index) {
+        const row = Math.floor(index / 4);
+        const col = index % 4;
+        const emptyRow = Math.floor(this.emptyTile / 4);
+        const emptyCol = this.emptyTile % 4;
+
+        // Check if adjacent to empty tile
+        if ((Math.abs(row - emptyRow) === 1 && col === emptyCol) ||
+            (Math.abs(col - emptyCol) === 1 && row === emptyRow)) {
+            [this.tiles[index], this.tiles[this.emptyTile]] = [this.tiles[this.emptyTile], this.tiles[index]];
+            this.emptyTile = index;
+            this.moves++;
+        }
+    }
+
+    isSolved() {
+        for (let i = 0; i < 15; i++) {
+            if (this.tiles[i] !== i) return false;
+        }
+        return true;
+    }
+
+    robotSolveStep() {
+        // Simulate robot solving puzzle
+        if (Math.random() < 0.15) {
+            const validMoves = this.getValidMovesForRobot();
+            if (validMoves.length > 0) {
+                const moveIdx = validMoves[Math.floor(Math.random() * validMoves.length)];
+                this.moveTile(moveIdx);
+                this.robotMoves++;
+                this.robotTimer += 0.5;
+            }
+        }
+    }
+
+    getValidMovesForRobot() {
+        const moves = [];
+        const emptyRow = Math.floor(this.emptyTile / 4);
+        const emptyCol = this.emptyTile % 4;
+
+        // Check all tiles adjacent to empty
+        for (let i = 0; i < 16; i++) {
+            const row = Math.floor(i / 4);
+            const col = i % 4;
+            if ((Math.abs(row - emptyRow) === 1 && col === emptyCol) ||
+                (Math.abs(col - emptyCol) === 1 && row === emptyRow)) {
+                moves.push(i);
+            }
+        }
+        return moves;
     }
 
     update(gameState) {
         const result = super.update(gameState);
         if (result) return result;
 
-        // Simulate puzzle solving
-        this.playerProgress += Math.random() * 2;
-        this.robotProgress += Math.random() * 1.5 * this.gameState?.difficulty || 1;
+        this.playerTimer = Math.floor((Date.now() - this.startTime) / 1000);
+        this.robotSolveStep();
 
-        if (this.playerProgress >= 100) return 'win';
-        if (this.robotProgress >= 100) return 'lose';
+        if (this.isSolved()) return 'win';
 
         return null;
     }
@@ -555,19 +651,46 @@ class Level5Puzzle extends Level {
         ctx.fillStyle = '#00ffff';
         ctx.font = 'bold 24px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('SCHUIFPUZZEL LEVEL (in aanbouw)', this.width / 2, 100);
+        ctx.fillText('SCHUIFPUZZEL - Los het puzzel op!', this.width / 2, 100);
 
-        // Progress bars
-        ctx.fillStyle = '#0099ff';
-        ctx.fillRect(100, 300, this.playerProgress * 2, 40);
-        ctx.strokeStyle = '#00ffff';
-        ctx.strokeRect(100, 300, 200, 40);
-        ctx.fillText('Jij', 50, 330);
+        const gridStartX = 150;
+        const gridStartY = 200;
 
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(100, 400, this.robotProgress * 2, 40);
-        ctx.strokeRect(100, 400, 200, 40);
-        ctx.fillText('Robot', 50, 430);
+        // Draw puzzle grid
+        for (let i = 0; i < 16; i++) {
+            const row = Math.floor(i / 4);
+            const col = i % 4;
+            const x = gridStartX + col * this.tileSize;
+            const y = gridStartY + row * this.tileSize;
+
+            if (i === this.emptyTile) {
+                // Empty space
+                ctx.fillStyle = '#222';
+                ctx.fillRect(x, y, this.tileSize, this.tileSize);
+            } else {
+                // Tile with number
+                ctx.fillStyle = '#0099ff';
+                ctx.fillRect(x, y, this.tileSize, this.tileSize);
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, this.tileSize, this.tileSize);
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.tiles[i] + 1, x + this.tileSize / 2, y + this.tileSize / 2);
+            }
+        }
+
+        // Draw stats
+        ctx.fillStyle = '#00ffff';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Jouw zetten: ${this.moves}`, 50, 150);
+        ctx.fillText(`Jouw tijd: ${this.playerTimer}s`, 50, 175);
+        ctx.fillText(`Robot zetten: ${this.robotMoves}`, 500, 150);
+        ctx.fillText(`Robot tijd: ${this.robotTimer.toFixed(1)}s`, 500, 175);
     }
 }
 
@@ -579,23 +702,97 @@ class Level6Dance extends Level {
         this.timeLimit = 60;
         this.sequence = [];
         this.playerSequence = [];
+        this.currentDisplayIndex = 0;
+        this.lastMoveTime = 0;
+        this.feedbackMessage = '';
+        this.feedbackColor = '#00ffff';
+        this.roundsCompleted = 0;
+        this.robotSequenceLength = 1;
         this.robot = new RobotDance(400, 300);
+        this.danceAnimationFrame = 0;
     }
 
     init(width, height) {
         super.init(width, height);
-        this.sequence = ['up', 'right', 'down', 'left'];
+        this.generateNewSequence();
         this.playerSequence = [];
-        this.robot.generateSequence(4);
+        this.currentDisplayIndex = 0;
+        this.roundsCompleted = 0;
+        this.robot.generateSequence(1);
 
-        window.addEventListener('keydown', (e) => this.handleDanceInput(e));
+        this.keyListener = (e) => this.handleDanceInput(e);
+        window.addEventListener('keydown', this.keyListener);
+    }
+
+    generateNewSequence() {
+        const moves = ['up', 'right', 'down', 'left'];
+        this.sequence = [];
+        for (let i = 0; i < this.robotSequenceLength; i++) {
+            this.sequence.push(moves[Math.floor(Math.random() * 4)]);
+        }
+        this.danceAnimationFrame = 0;
+    }
+
+    getMoveColor(move) {
+        const colorMap = {
+            'up': '#ff0099',
+            'right': '#ffff00',
+            'down': '#00ff00',
+            'left': '#0099ff'
+        };
+        return colorMap[move] || '#00ffff';
+    }
+
+    getMoveSymbol(move) {
+        const symbolMap = {
+            'up': '↑',
+            'right': '→',
+            'down': '↓',
+            'left': '←'
+        };
+        return symbolMap[move] || '';
     }
 
     handleDanceInput(e) {
         const keyMap = { 'arrowup': 'up', 'arrowright': 'right', 'arrowdown': 'down', 'arrowleft': 'left' };
         const move = keyMap[e.key.toLowerCase()];
         if (move) {
-            this.playerSequence.push(move);
+            this.lastMoveTime = Date.now();
+
+            if (this.playerSequence.length < this.sequence.length) {
+                this.playerSequence.push(move);
+
+                // Check if move is correct
+                if (this.playerSequence[this.playerSequence.length - 1] ===
+                    this.sequence[this.playerSequence.length - 1]) {
+                    this.feedbackMessage = '✓ Correct!';
+                    this.feedbackColor = '#00ff00';
+                } else {
+                    this.feedbackMessage = '✗ Fout!';
+                    this.feedbackColor = '#ff0000';
+                    this.playerSequence = []; // Reset on wrong move
+                }
+
+                // Check if sequence complete
+                if (this.playerSequence.length === this.sequence.length) {
+                    this.feedbackMessage = '✓ Ronde compleet!';
+                    this.feedbackColor = '#00ff00';
+                    this.roundsCompleted++;
+
+                    if (this.roundsCompleted >= 5) {
+                        // Win after 5 successful rounds
+                        window.removeEventListener('keydown', this.keyListener);
+                    } else {
+                        // Add new move to sequence
+                        setTimeout(() => {
+                            this.robotSequenceLength++;
+                            this.generateNewSequence();
+                            this.playerSequence = [];
+                            this.danceAnimationFrame = 0;
+                        }, 1000);
+                    }
+                }
+            }
         }
     }
 
@@ -603,29 +800,84 @@ class Level6Dance extends Level {
         const result = super.update(gameState);
         if (result) return result;
 
-        if (this.playerSequence.length >= this.sequence.length) {
-            if (this.playerSequence.join('') === this.sequence.join('')) {
-                return 'win';
-            } else {
-                this.playerSequence = [];
-            }
+        this.danceAnimationFrame++;
+
+        if (this.roundsCompleted >= 5) {
+            return 'win';
+        }
+
+        // Reset feedback after 1 second
+        if (Date.now() - this.lastMoveTime > 1000) {
+            this.feedbackMessage = '';
         }
 
         return null;
+    }
+
+    drawDancePad(ctx, x, y, size, move, isActive) {
+        const color = this.getMoveColor(move);
+        ctx.fillStyle = isActive ? color : '#333';
+        ctx.fillRect(x, y, size, size);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, size, size);
+
+        ctx.fillStyle = color;
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.getMoveSymbol(move), x + size / 2, y + size / 2);
     }
 
     draw(ctx) {
         super.draw(ctx);
 
         ctx.fillStyle = '#00ffff';
-        ctx.font = 'bold 20px Arial';
+        ctx.font = 'bold 24px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Volg de dans moves!', this.width / 2, 100);
+        ctx.fillText('DANS - Volg de sequentie!', this.width / 2, 80);
 
-        // Display the sequence to follow
         ctx.font = '16px Arial';
-        ctx.fillText('Sequence: ' + this.sequence.join(' → '), this.width / 2, 150);
-        ctx.fillText('Jouw invoer: ' + this.playerSequence.join(' → '), this.width / 2, 200);
+        ctx.fillText(`Ronde: ${this.roundsCompleted}/5`, this.width / 2, 120);
+
+        // Draw dance pads (arrows)
+        const padSize = 60;
+        const centerX = 400;
+        const centerY = 300;
+
+        this.drawDancePad(ctx, centerX, centerY - padSize - 20, padSize, 'up',
+            this.danceAnimationFrame % 40 < 10 && this.currentDisplayIndex < this.sequence.length && this.sequence[this.currentDisplayIndex] === 'up');
+        this.drawDancePad(ctx, centerX + padSize + 20, centerY, padSize, 'right',
+            this.danceAnimationFrame % 40 < 10 && this.currentDisplayIndex < this.sequence.length && this.sequence[this.currentDisplayIndex] === 'right');
+        this.drawDancePad(ctx, centerX, centerY + padSize + 20, padSize, 'down',
+            this.danceAnimationFrame % 40 < 10 && this.currentDisplayIndex < this.sequence.length && this.sequence[this.currentDisplayIndex] === 'down');
+        this.drawDancePad(ctx, centerX - padSize - 20, centerY, padSize, 'left',
+            this.danceAnimationFrame % 40 < 10 && this.currentDisplayIndex < this.sequence.length && this.sequence[this.currentDisplayIndex] === 'left');
+
+        // Display sequence visually
+        ctx.fillStyle = '#00ffff';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('Sequentie:', 50, 200);
+
+        for (let i = 0; i < this.sequence.length; i++) {
+            const color = i < this.playerSequence.length ? '#00ff00' : this.getMoveColor(this.sequence[i]);
+            ctx.fillStyle = color;
+            ctx.fillText(this.getMoveSymbol(this.sequence[i]), 80 + i * 40, 200);
+        }
+
+        // Feedback
+        if (this.feedbackMessage) {
+            ctx.fillStyle = this.feedbackColor;
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(this.feedbackMessage, this.width / 2, 450);
+        }
+
+        ctx.fillStyle = '#00ffff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Gebruik pijltoetsen om te dansen', this.width / 2, 550);
     }
 }
 
@@ -635,22 +887,114 @@ class Level7Cooking extends Level {
         super();
         this.name = 'Koken';
         this.timeLimit = 120;
-        this.ingredients = [];
-        this.playerRecipe = [];
+        this.allIngredients = [
+            { emoji: '🍅', name: 'Tomaat', x: 100, y: 250, width: 60, height: 60 },
+            { emoji: '🧂', name: 'Zout', x: 200, y: 250, width: 60, height: 60 },
+            { emoji: '🧈', name: 'Boter', x: 300, y: 250, width: 60, height: 60 },
+            { emoji: '🍗', name: 'Kip', x: 400, y: 250, width: 60, height: 60 },
+            { emoji: '🌶️', name: 'Peper', x: 500, y: 250, width: 60, height: 60 },
+            { emoji: '🧄', name: 'Knoflook', x: 600, y: 250, width: 60, height: 60 }
+        ];
+        this.recipe = ['🍅', '🧈', '🍗'];
+        this.selectedIngredients = [];
+        this.cookingTime = 0;
+        this.cookingTimeNeeded = 3;
+        this.isCooking = false;
+        this.feedbackMessage = '';
+        this.feedbackColor = '#00ffff';
+        this.recipesCompleted = 0;
     }
 
     init(width, height) {
         super.init(width, height);
-        this.ingredients = ['🍅', '🧂', '🧈', '🍗', '🌶️', '🧄'];
-        this.playerRecipe = [];
+        this.selectedIngredients = [];
+        this.cookingTime = 0;
+        this.isCooking = false;
+        this.recipesCompleted = 0;
+        this.generateNewRecipe();
+
+        document.addEventListener('click', (e) => this.handleIngredientClick(e));
+    }
+
+    generateNewRecipe() {
+        const availableEmojis = ['🍅', '🧈', '🍗', '🍖', '🥘'];
+        this.recipe = [];
+        const recipeLength = 2 + this.recipesCompleted;
+        for (let i = 0; i < recipeLength; i++) {
+            this.recipe.push(availableEmojis[Math.floor(Math.random() * availableEmojis.length)]);
+        }
+        this.selectedIngredients = [];
+        this.isCooking = false;
+        this.cookingTime = 0;
+    }
+
+    handleIngredientClick(e) {
+        if (this.isCooking) return;
+
+        const canvas = document.getElementById('gameCanvas');
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        for (const ingredient of this.allIngredients) {
+            if (x > ingredient.x && x < ingredient.x + ingredient.width &&
+                y > ingredient.y && y < ingredient.y + ingredient.height) {
+                this.addIngredient(ingredient.emoji);
+                return;
+            }
+        }
+    }
+
+    addIngredient(emoji) {
+        if (this.selectedIngredients.length < this.recipe.length) {
+            this.selectedIngredients.push(emoji);
+
+            // Check if correct so far
+            if (this.selectedIngredients[this.selectedIngredients.length - 1] ===
+                this.recipe[this.selectedIngredients.length - 1]) {
+                this.feedbackMessage = '✓ Correct!';
+                this.feedbackColor = '#00ff00';
+            } else {
+                this.feedbackMessage = '✗ Fout! -10 seconden';
+                this.feedbackColor = '#ff0000';
+                this.timeRemaining -= 10;
+                this.selectedIngredients = [];
+            }
+
+            // Recipe complete
+            if (this.selectedIngredients.length === this.recipe.length) {
+                this.isCooking = true;
+                this.feedbackMessage = 'Aan het koken...';
+                this.feedbackColor = '#ffaa00';
+                this.cookingTime = 0;
+            }
+        }
     }
 
     update(gameState) {
         const result = super.update(gameState);
         if (result) return result;
 
-        if (this.playerRecipe.length >= 3) {
-            return 'win';
+        if (this.isCooking) {
+            this.cookingTime += 0.016; // Approximately 16ms per frame
+            if (this.cookingTime >= this.cookingTimeNeeded) {
+                this.feedbackMessage = '✓ Gerecht klaar!';
+                this.feedbackColor = '#00ff00';
+                this.recipesCompleted++;
+
+                if (this.recipesCompleted >= 3) {
+                    return 'win';
+                }
+
+                setTimeout(() => {
+                    this.generateNewRecipe();
+                }, 1500);
+            }
+        }
+
+        // Reset feedback after delay
+        if (this.feedbackMessage && Date.now() % 2000 > 1000) {
+            // Flash feedback for a bit
         }
 
         return null;
@@ -660,14 +1004,81 @@ class Level7Cooking extends Level {
         super.draw(ctx);
 
         ctx.fillStyle = '#00ffff';
-        ctx.font = 'bold 20px Arial';
+        ctx.font = 'bold 24px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Kook het gerecht (in aanbouw)', this.width / 2, 100);
+        ctx.fillText('KOKEN - Volg het recept!', this.width / 2, 80);
 
-        // Display ingredients
-        for (let i = 0; i < this.ingredients.length; i++) {
+        ctx.font = '16px Arial';
+        ctx.fillText(`Gerechten klaar: ${this.recipesCompleted}/3`, this.width / 2, 120);
+
+        // Draw recipe box
+        ctx.fillStyle = '#222';
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 2;
+        ctx.fillRect(50, 150, 700, 80);
+        ctx.strokeRect(50, 150, 700, 80);
+
+        ctx.fillStyle = '#00ffff';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('Recept:', 60, 170);
+
+        // Draw recipe ingredients
+        for (let i = 0; i < this.recipe.length; i++) {
+            const color = i < this.selectedIngredients.length ? '#00ff00' : '#0099ff';
+            ctx.fillStyle = color;
+            ctx.font = '24px Arial';
+            ctx.fillText(this.recipe[i], 100 + i * 70, 200);
+        }
+
+        // Draw selected ingredients
+        ctx.fillStyle = '#00ffff';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText('Geselecteerd:', 60, 230);
+
+        for (let i = 0; i < this.selectedIngredients.length; i++) {
+            ctx.font = '24px Arial';
+            ctx.fillText(this.selectedIngredients[i], 100 + i * 70, 260);
+        }
+
+        // Draw ingredients to click
+        ctx.fillStyle = '#00ffff';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText('Ingrediënten:', 50, 330);
+
+        for (const ingredient of this.allIngredients) {
+            ctx.fillStyle = '#333';
+            ctx.fillRect(ingredient.x, ingredient.y, ingredient.width, ingredient.height);
+            ctx.strokeStyle = '#0099ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(ingredient.x, ingredient.y, ingredient.width, ingredient.height);
+
             ctx.font = '30px Arial';
-            ctx.fillText(this.ingredients[i], 150 + (i % 3) * 150, 250 + Math.floor(i / 3) * 100);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ingredient.emoji, ingredient.x + ingredient.width / 2, ingredient.y + ingredient.height / 2);
+        }
+
+        // Draw cooking progress
+        if (this.isCooking) {
+            ctx.fillStyle = '#ffaa00';
+            ctx.fillRect(150, 400, (this.cookingTime / this.cookingTimeNeeded) * 500, 40);
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(150, 400, 500, 40);
+
+            ctx.fillStyle = '#ffff00';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Aan het koken...', 400, 425);
+        }
+
+        // Feedback message
+        if (this.feedbackMessage) {
+            ctx.fillStyle = this.feedbackColor;
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(this.feedbackMessage, this.width / 2, 500);
         }
     }
 }
@@ -681,27 +1092,121 @@ class Level8Racing extends Level {
         this.playerPosition = 0;
         this.robotPosition = 0;
         this.trackLength = 1000;
+        this.obstacles = [];
+        this.powerUps = [];
+        this.spacebarPresses = 0;
+        this.lastSpacebarTime = 0;
+        this.spacebarCooldown = 100; // ms between presses
+        this.playerVelocity = 0;
+        this.robotVelocity = 1;
+        this.playerSpeed = 5;
+        this.feedbackMessage = '';
+        this.feedbackColor = '#00ffff';
+        this.boost = 0;
+        this.boostMax = 100;
+        this.spacePressed = false;
     }
 
     init(width, height) {
         super.init(width, height);
         this.playerPosition = 0;
         this.robotPosition = 0;
+        this.spacebarPresses = 0;
+        this.playerVelocity = 0;
+        this.robotVelocity = 1;
+        this.boost = 0;
+        this.generateObstaclesAndPowerUps();
 
-        window.addEventListener('keydown', (e) => {
-            if (e.key === ' ') this.playerPosition += 50;
-        });
+        this.keyListener = (e) => {
+            if (e.key === ' ') {
+                e.preventDefault();
+                const now = Date.now();
+                if (now - this.lastSpacebarTime > this.spacebarCooldown) {
+                    this.playerPosition += this.playerSpeed;
+                    this.spacebarPresses++;
+                    this.boost = Math.min(this.boost + 10, this.boostMax);
+                    this.lastSpacebarTime = now;
+                    this.feedbackMessage = 'BOOST!';
+                    this.feedbackColor = '#ffaa00';
+                }
+            }
+        };
+        window.addEventListener('keydown', this.keyListener);
+    }
+
+    generateObstaclesAndPowerUps() {
+        this.obstacles = [];
+        this.powerUps = [];
+
+        for (let i = 200; i < this.trackLength; i += 150) {
+            this.obstacles.push({
+                position: i + Math.random() * 50,
+                active: true
+            });
+        }
+
+        for (let i = 300; i < this.trackLength; i += 250) {
+            this.powerUps.push({
+                position: i + Math.random() * 50,
+                active: true,
+                type: Math.random() > 0.5 ? 'speed' : 'slow'
+            });
+        }
+    }
+
+    checkCollisions() {
+        for (const obstacle of this.obstacles) {
+            if (obstacle.active && Math.abs(this.playerPosition - obstacle.position) < 30) {
+                obstacle.active = false;
+                this.playerPosition -= 80; // Setback for hitting obstacle
+                this.feedbackMessage = '✗ Obstakel geraakt!';
+                this.feedbackColor = '#ff0000';
+            }
+        }
+
+        for (const powerUp of this.powerUps) {
+            if (powerUp.active && Math.abs(this.playerPosition - powerUp.position) < 30) {
+                powerUp.active = false;
+                if (powerUp.type === 'speed') {
+                    this.playerSpeed += 2;
+                    this.feedbackMessage = '✓ Sneller!';
+                    this.feedbackColor = '#00ff00';
+                } else {
+                    this.robotVelocity -= 0.5;
+                    this.feedbackMessage = '✓ Robot vertraagd!';
+                }
+            }
+        }
     }
 
     update(gameState) {
         const result = super.update(gameState);
         if (result) return result;
 
-        // Robot accelerates
-        this.robotPosition += 30 + Math.random() * 20;
+        // Robot AI - accelerates over time with some variation
+        this.robotVelocity += 0.015;
+        this.robotPosition += this.robotVelocity + Math.random() * 0.5;
 
+        // Player boost system - can be used to accelerate
+        if (this.boost > 0) {
+            this.boost -= 0.5;
+        }
+
+        // Check collisions
+        this.checkCollisions();
+
+        // Clamp positions to track
+        this.playerPosition = Math.max(0, Math.min(this.playerPosition, this.trackLength));
+        this.robotPosition = Math.max(0, Math.min(this.robotPosition, this.trackLength));
+
+        // Win/lose conditions
         if (this.playerPosition >= this.trackLength) return 'win';
         if (this.robotPosition >= this.trackLength) return 'lose';
+
+        // Reset feedback message
+        if (Date.now() % 1000 > 500) {
+            // Flash effect
+        }
 
         return null;
     }
@@ -710,21 +1215,92 @@ class Level8Racing extends Level {
         super.draw(ctx);
 
         ctx.fillStyle = '#00ffff';
-        ctx.font = 'bold 20px Arial';
+        ctx.font = 'bold 24px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Race tegen de robot! (Druk SPATIE)', this.width / 2, 100);
+        ctx.fillText('RACE - Spam SPATIE om te racen!', this.width / 2, 80);
 
-        // Draw race track
-        ctx.fillStyle = '#333';
-        ctx.fillRect(50, 200, 700, 50);
-        ctx.fillStyle = '#444';
-        ctx.fillRect(50, 280, 700, 50);
+        const trackWidth = 600;
+        const trackStartX = 100;
+        const trackStartY = 150;
+        const trackHeight = 120;
 
-        // Draw progress bars
+        // Draw track background
+        ctx.fillStyle = '#222';
+        ctx.fillRect(trackStartX, trackStartY, trackWidth, trackHeight);
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(trackStartX, trackStartY, trackWidth, trackHeight);
+
+        // Draw finish line
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(trackStartX + trackWidth - 10, trackStartY);
+        ctx.lineTo(trackStartX + trackWidth - 10, trackStartY + trackHeight);
+        ctx.stroke();
+
+        // Draw obstacles
+        for (const obstacle of this.obstacles) {
+            if (obstacle.active) {
+                const x = trackStartX + (obstacle.position / this.trackLength) * trackWidth;
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(x - 5, trackStartY + 20, 10, 40);
+            }
+        }
+
+        // Draw power-ups
+        for (const powerUp of this.powerUps) {
+            if (powerUp.active) {
+                const x = trackStartX + (powerUp.position / this.trackLength) * trackWidth;
+                ctx.fillStyle = powerUp.type === 'speed' ? '#ffff00' : '#0099ff';
+                ctx.beginPath();
+                ctx.arc(x, trackStartY + 30, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Draw player
+        const playerX = trackStartX + (this.playerPosition / this.trackLength) * trackWidth;
         ctx.fillStyle = '#0099ff';
-        ctx.fillRect(50, 200, (this.playerPosition / this.trackLength) * 700, 50);
+        ctx.fillRect(playerX - 8, trackStartY + 10, 16, 30);
+        ctx.fillText('JIJ', playerX - 10, trackStartY + 60);
+
+        // Draw robot
+        const robotX = trackStartX + (this.robotPosition / this.trackLength) * trackWidth;
         ctx.fillStyle = '#00ff00';
-        ctx.fillRect(50, 280, (this.robotPosition / this.trackLength) * 700, 50);
+        ctx.fillRect(robotX - 8, trackStartY + 70, 16, 30);
+        ctx.fillText('ROBOT', robotX - 20, trackStartY + 120);
+
+        // Draw progress text
+        ctx.fillStyle = '#00ffff';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Jij: ${Math.floor(this.playerPosition)}/${this.trackLength}`, 50, 300);
+        ctx.fillText(`Robot: ${Math.floor(this.robotPosition)}/${this.trackLength}`, 50, 330);
+        ctx.fillText(`Snelheid: ${this.playerSpeed}`, 50, 360);
+        ctx.fillText(`Spacebar presses: ${this.spacebarPresses}`, 50, 390);
+
+        // Draw boost bar
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillRect(100, 410, (this.boost / this.boostMax) * 300, 20);
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(100, 410, 300, 20);
+        ctx.fillStyle = '#00ffff';
+        ctx.font = '12px Arial';
+        ctx.fillText('BOOST', 50, 423);
+
+        // Feedback message
+        if (this.feedbackMessage) {
+            ctx.fillStyle = this.feedbackColor;
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(this.feedbackMessage, this.width / 2, 500);
+        }
+
+        ctx.fillStyle = '#00ffff';
+        ctx.font = '12px Arial';
+        ctx.fillText('🔴 Obstakels | 🟡 Powerups (snelheid/vertraging)', this.width / 2, 550);
     }
 }
 
