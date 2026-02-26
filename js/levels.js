@@ -44,6 +44,11 @@ class Level1Memory extends Level {
         this.matchedPairs = 0;
         this.robot = new RobotMemory(400, 100);
         this.robotScore = 0;
+        this.clickHandler = null;
+        this.turnCount = 0;
+        this.cardFlipAnimation = {};
+        this.isProcessing = false;
+        this.difficulty = 1;
     }
 
     init(width, height) {
@@ -53,7 +58,19 @@ class Level1Memory extends Level {
         this.matchedPairs = 0;
         this.robot.memory = [];
         this.robotScore = 0;
-        document.addEventListener('click', (e) => this.handleClick(e));
+        this.turnCount = 0;
+        this.isProcessing = false;
+        this.cardFlipAnimation = {};
+        this.difficulty = 1;
+
+        // Remove previous handler if it exists to prevent memory leaks
+        if (this.clickHandler) {
+            document.removeEventListener('click', this.clickHandler);
+        }
+
+        // Create and bind handler for this level instance
+        this.clickHandler = (e) => this.handleClick(e);
+        document.addEventListener('click', this.clickHandler);
     }
 
     createCards() {
@@ -63,12 +80,15 @@ class Level1Memory extends Level {
             revealed: false,
             matched: false,
             x: 100 + (idx % 6) * 100,
-            y: 200 + Math.floor(idx / 6) * 100
+            y: 200 + Math.floor(idx / 6) * 100,
+            flipProgress: 0
         }));
         return cards.sort(() => Math.random() - 0.5);
     }
 
     handleClick(e) {
+        if (this.isProcessing || this.selectedCards.length >= 2) return;
+
         const canvas = document.getElementById('gameCanvas');
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -79,10 +99,16 @@ class Level1Memory extends Level {
             if (x > card.x && x < card.x + this.cardSize &&
                 y > card.y && y < card.y + this.cardSize &&
                 !card.matched && !card.revealed) {
+
+                // Start flip animation
+                this.cardFlipAnimation[i] = { progress: 0, duration: 200 };
                 this.selectedCards.push(i);
+
                 if (this.selectedCards.length === 2) {
+                    this.isProcessing = true;
                     this.checkMatch();
                 }
+                break;
             }
         }
     }
@@ -100,15 +126,28 @@ class Level1Memory extends Level {
                 card1.matched = true;
                 card2.matched = true;
                 this.matchedPairs++;
+
+                // Robot learns the matched cards
                 this.robot.rememberCard(idx1, card1.value);
                 this.robot.rememberCard(idx2, card1.value);
+
+                this.isProcessing = false;
+                this.selectedCards = [];
             } else {
                 card1.revealed = false;
                 card2.revealed = false;
+
+                // Reset flip animation
+                delete this.cardFlipAnimation[idx1];
+                delete this.cardFlipAnimation[idx2];
+
+                this.selectedCards = [];
+                this.turnCount++;
+
+                // Robot takes turn with difficulty scaling
                 this.robotTurn();
             }
-            this.selectedCards = [];
-        }, 500);
+        }, 600);
     }
 
     robotTurn() {
@@ -117,21 +156,72 @@ class Level1Memory extends Level {
             .filter(i => i !== -1);
 
         setTimeout(() => {
-            const move = this.robot.getNextMove(availableCards);
+            if (availableCards.length === 0) {
+                this.isProcessing = false;
+                return;
+            }
+
+            const move = this.robot.getNextMove(availableCards, this.difficulty);
             if (move) {
                 this.cards[move.first].revealed = true;
                 this.cards[move.second].revealed = true;
+
+                // Start flip animations for robot
+                this.cardFlipAnimation[move.first] = { progress: 0, duration: 200 };
+                this.cardFlipAnimation[move.second] = { progress: 0, duration: 200 };
 
                 setTimeout(() => {
                     if (this.cards[move.first].value === this.cards[move.second].value) {
                         this.cards[move.first].matched = true;
                         this.cards[move.second].matched = true;
                         this.robotScore++;
+
+                        // Robot learns the matched cards
+                        this.robot.rememberCard(move.first, this.cards[move.first].value);
+                        this.robot.rememberCard(move.second, this.cards[move.first].value);
                     } else {
                         this.cards[move.first].revealed = false;
                         this.cards[move.second].revealed = false;
+
+                        // Reset flip animations
+                        delete this.cardFlipAnimation[move.first];
+                        delete this.cardFlipAnimation[move.second];
                     }
-                }, 500);
+
+                    this.isProcessing = false;
+                }, 600);
+            } else {
+                // Robot makes random move if no match found in memory
+                const randomIndices = availableCards.sort(() => 0.5 - Math.random()).slice(0, 2);
+                if (randomIndices.length === 2) {
+                    this.cards[randomIndices[0]].revealed = true;
+                    this.cards[randomIndices[1]].revealed = true;
+
+                    // Start flip animations
+                    this.cardFlipAnimation[randomIndices[0]] = { progress: 0, duration: 200 };
+                    this.cardFlipAnimation[randomIndices[1]] = { progress: 0, duration: 200 };
+
+                    setTimeout(() => {
+                        if (this.cards[randomIndices[0]].value === this.cards[randomIndices[1]].value) {
+                            this.cards[randomIndices[0]].matched = true;
+                            this.cards[randomIndices[1]].matched = true;
+                            this.robotScore++;
+
+                            // Robot learns new cards
+                            this.robot.rememberCard(randomIndices[0], this.cards[randomIndices[0]].value);
+                            this.robot.rememberCard(randomIndices[1], this.cards[randomIndices[0]].value);
+                        } else {
+                            this.cards[randomIndices[0]].revealed = false;
+                            this.cards[randomIndices[1]].revealed = false;
+
+                            // Reset flip animations
+                            delete this.cardFlipAnimation[randomIndices[0]];
+                            delete this.cardFlipAnimation[randomIndices[1]];
+                        }
+
+                        this.isProcessing = false;
+                    }, 600);
+                }
             }
         }, 1000);
     }
@@ -139,6 +229,17 @@ class Level1Memory extends Level {
     update(gameState) {
         const result = super.update(gameState);
         if (result) return result;
+
+        // Update flip animations
+        for (const [cardIdx, anim] of Object.entries(this.cardFlipAnimation)) {
+            anim.progress += 1 / 16; // ~60fps
+            if (anim.progress >= 1) {
+                delete this.cardFlipAnimation[cardIdx];
+            }
+        }
+
+        // Increase difficulty over time based on turn count
+        this.difficulty = Math.min(1 + (this.turnCount * 0.1), 3);
 
         if (this.matchedPairs >= 6) {
             return 'win';
@@ -149,21 +250,39 @@ class Level1Memory extends Level {
     draw(ctx) {
         super.draw(ctx);
 
-        // Draw cards
-        for (const card of this.cards) {
+        // Draw cards with flip animation
+        for (let i = 0; i < this.cards.length; i++) {
+            const card = this.cards[i];
+            const anim = this.cardFlipAnimation[i];
+            const flipProgress = anim ? Math.sin(anim.progress * Math.PI) : 0;
+
+            ctx.save();
+
+            // Apply flip transform (visual feedback for animation)
+            if (flipProgress > 0.1) {
+                ctx.globalAlpha = 1 - flipProgress;
+            }
+
             ctx.fillStyle = card.matched ? '#00ff00' : '#0099ff';
             ctx.fillRect(card.x, card.y, this.cardSize, this.cardSize);
             ctx.strokeStyle = '#00ffff';
             ctx.lineWidth = 2;
             ctx.strokeRect(card.x, card.y, this.cardSize, this.cardSize);
 
+            // Draw card content if revealed or matched
             if (card.revealed || card.matched) {
                 ctx.fillStyle = '#000';
                 ctx.font = 'bold 30px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(card.value, card.x + this.cardSize / 2, card.y + this.cardSize / 2);
+            } else if (!anim) {
+                // Show card back pattern
+                ctx.fillStyle = '#004d7f';
+                ctx.fillRect(card.x + 8, card.y + 8, this.cardSize - 16, this.cardSize - 16);
             }
+
+            ctx.restore();
         }
 
         // Score display
@@ -172,8 +291,10 @@ class Level1Memory extends Level {
         ctx.textAlign = 'left';
         ctx.fillText(`Jouw pairs: ${this.matchedPairs}`, 50, 100);
         ctx.fillText(`Robot pairs: ${this.robotScore}`, 50, 130);
+        ctx.fillText(`Difficulty: ${this.difficulty.toFixed(1)}x`, 50, 160);
     }
 }
+
 
 // LEVEL 2: TAG
 class Level2Tag extends Level {
@@ -187,16 +308,28 @@ class Level2Tag extends Level {
         this.playerSpeed = 5;
         this.robot = new RobotTag(100, 100);
         this.points = 0;
+        this.distance = 0;
+        this.distanceBonus = 0;
+        this.lastX = 400;
+        this.lastY = 400;
         this.keysPressed = {};
+        this.walls = [];
+        this.boundaryWalls = [];
     }
 
     init(width, height) {
         super.init(width, height);
         this.playerX = 400;
         this.playerY = 400;
+        this.lastX = 400;
+        this.lastY = 400;
         this.points = 0;
+        this.distance = 0;
+        this.distanceBonus = 0;
         this.robot.x = 100;
         this.robot.y = 100;
+        this.createWalls();
+        this.createBoundaryWalls();
 
         window.addEventListener('keydown', (e) => {
             this.keysPressed[e.key.toLowerCase()] = true;
@@ -206,43 +339,165 @@ class Level2Tag extends Level {
         });
     }
 
+    createWalls() {
+        // Create walls to divide the play area and add obstacles
+        this.walls = [
+            { x: 200, y: 0, w: 20, h: 250 },      // Left vertical wall (top)
+            { x: 200, y: 350, w: 20, h: 250 },    // Left vertical wall (bottom)
+            { x: 600, y: 100, w: 20, h: 250 },    // Right vertical wall (top)
+            { x: 600, y: 400, w: 20, h: 200 },    // Right vertical wall (bottom)
+            { x: 300, y: 150, w: 300, h: 20 },    // Horizontal wall (middle)
+        ];
+    }
+
+    createBoundaryWalls() {
+        // Create outer boundary walls to keep game within bounds
+        this.boundaryWalls = [
+            { x: 0, y: 0, w: this.width, h: 60 },           // Top wall
+            { x: 0, y: this.height - 60, w: this.width, h: 60 }, // Bottom wall
+            { x: 0, y: 0, w: 50, h: this.height },          // Left wall
+            { x: this.width - 50, y: 0, w: 50, h: this.height } // Right wall
+        ];
+    }
+
+    checkWallCollision(x, y, size) {
+        // Check internal walls
+        for (const wall of this.walls) {
+            if (x < wall.x + wall.w && x + size > wall.x &&
+                y < wall.y + wall.h && y + size > wall.y) {
+                return true;
+            }
+        }
+        // Check boundary walls
+        for (const wall of this.boundaryWalls) {
+            if (x < wall.x + wall.w && x + size > wall.x &&
+                y < wall.y + wall.h && y + size > wall.y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     update(gameState) {
         const result = super.update(gameState);
         if (result) return result;
 
-        // Player movement
+        // Player movement with wall collision
+        let newX = this.playerX;
+        let newY = this.playerY;
+
         if (this.keysPressed['arrowup'] || this.keysPressed['w']) {
-            this.playerY = Math.max(60, this.playerY - this.playerSpeed);
+            newY = this.playerY - this.playerSpeed;
         }
         if (this.keysPressed['arrowdown'] || this.keysPressed['s']) {
-            this.playerY = Math.min(this.height - this.playerSize, this.playerY + this.playerSpeed);
+            newY = this.playerY + this.playerSpeed;
         }
         if (this.keysPressed['arrowleft'] || this.keysPressed['a']) {
-            this.playerX = Math.max(0, this.playerX - this.playerSpeed);
+            newX = this.playerX - this.playerSpeed;
         }
         if (this.keysPressed['arrowright'] || this.keysPressed['d']) {
-            this.playerX = Math.min(this.width - this.playerSize, this.playerX + this.playerSpeed);
+            newX = this.playerX + this.playerSpeed;
         }
 
-        // Robot AI
+        // Check wall collisions before updating position
+        if (!this.checkWallCollision(newX, this.playerY, this.playerSize)) {
+            this.playerX = newX;
+        }
+        if (!this.checkWallCollision(this.playerX, newY, this.playerSize)) {
+            this.playerY = newY;
+        }
+
+        // Calculate distance traveled for bonus points
+        const dx = this.playerX - this.lastX;
+        const dy = this.playerY - this.lastY;
+        const movementDist = Math.sqrt(dx * dx + dy * dy);
+        this.distance += movementDist;
+        this.distanceBonus = Math.floor(this.distance / 100);
+        this.lastX = this.playerX;
+        this.lastY = this.playerY;
+
+        // Robot AI with smarter dodging
         this.robot.update(this.playerX, this.playerY, this.width, this.height);
+
+        // Smart dodging behavior - robot avoids walls intelligently
+        const dodgeDistance = 30;
+        if (this.checkWallCollision(this.robot.x, this.robot.y, this.robot.width)) {
+            // Evaluate all 4 directions and pick the best one
+            const directions = [
+                { dx: dodgeDistance, dy: 0 },
+                { dx: -dodgeDistance, dy: 0 },
+                { dx: 0, dy: dodgeDistance },
+                { dx: 0, dy: -dodgeDistance }
+            ];
+
+            // Calculate distance to player for each direction
+            let bestDirection = null;
+            let bestDistance = 0;
+
+            for (const dir of directions) {
+                if (!this.checkWallCollision(this.robot.x + dir.dx, this.robot.y + dir.dy, this.robot.width)) {
+                    const distToPlayer = Math.sqrt(
+                        Math.pow(this.playerX - (this.robot.x + dir.dx), 2) +
+                        Math.pow(this.playerY - (this.robot.y + dir.dy), 2)
+                    );
+                    if (distToPlayer > bestDistance) {
+                        bestDistance = distToPlayer;
+                        bestDirection = dir;
+                    }
+                }
+            }
+
+            if (bestDirection) {
+                this.robot.x += bestDirection.dx;
+                this.robot.y += bestDirection.dy;
+            }
+        }
+
         this.robot.increaseDifficulty();
 
-        // Collision detection
+        // Improved circular collision detection with better accuracy
         if (this.isColliding(this.playerX, this.playerY, this.playerSize, this.robot.x, this.robot.y, this.robot.width)) {
             return 'lose';
         }
 
-        this.points += 1;
+        // Points calculation: base on time, distance bonus, and survival
+        const timePoints = this.timeRemaining * 10;
+        const bonusPoints = this.distanceBonus * 5;
+        this.points = Math.floor(timePoints + bonusPoints);
+
         return null;
     }
 
     isColliding(x1, y1, size1, x2, y2, size2) {
-        return x1 < x2 + size2 && x1 + size1 > x2 && y1 < y2 + size2 && y1 + size1 > y2;
+        // Improved circular collision detection with margin for safety
+        const center1X = x1 + size1 / 2;
+        const center1Y = y1 + size1 / 2;
+        const center2X = x2 + size2 / 2;
+        const center2Y = y2 + size2 / 2;
+        const distance = Math.sqrt(Math.pow(center2X - center1X, 2) + Math.pow(center2Y - center1Y, 2));
+        const minDistance = (size1 / 2 + size2 / 2) * 0.9; // 90% of theoretical distance
+        return distance < minDistance;
     }
 
     draw(ctx) {
         super.draw(ctx);
+
+        // Draw boundary walls
+        ctx.fillStyle = '#444444';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ff0000';
+        for (const wall of this.boundaryWalls) {
+            ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+            ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
+        }
+
+        // Draw internal obstacles/walls
+        ctx.fillStyle = '#555555';
+        ctx.strokeStyle = '#ffaa00';
+        for (const wall of this.walls) {
+            ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+            ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
+        }
 
         // Draw player (blue circle)
         ctx.fillStyle = '#0099ff';
@@ -256,11 +511,13 @@ class Level2Tag extends Level {
         // Draw robot
         this.robot.draw(ctx);
 
-        // Draw points
+        // Draw points and distance bonus
         ctx.fillStyle = '#00ffff';
         ctx.font = 'bold 20px Arial';
         ctx.textAlign = 'left';
         ctx.fillText(`Punten: ${this.points}`, 50, 100);
+        ctx.fillText(`Afstand: ${Math.floor(this.distance)}px (Bonus: +${this.distanceBonus * 5})`, 50, 130);
+        ctx.fillText(`Moeilijkheid: ${this.robot.difficulty.toFixed(1)}x`, 50, 160);
     }
 }
 
@@ -275,8 +532,14 @@ class Level3HideAndSeek extends Level {
         this.playerSize = 25;
         this.hidingSpots = [];
         this.isHiding = false;
+        this.hidingSpotIndex = -1;
         this.robot = new RobotTag(50, 300);
         this.robotFound = false;
+        this.hidingBlinkCounter = 0;
+        this.robotSearchPattern = 'circular';
+        this.robotSearchPhase = 0;
+        this.hiddenMovementX = 0;
+        this.hiddenMovementY = 0;
     }
 
     init(width, height) {
@@ -284,25 +547,64 @@ class Level3HideAndSeek extends Level {
         this.playerX = 700;
         this.playerY = 300;
         this.isHiding = false;
+        this.hidingSpotIndex = -1;
         this.robotFound = false;
+        this.hidingBlinkCounter = 0;
         this.robot.x = 50;
         this.robot.y = 300;
+        this.robotSearchPattern = 'circular';
+        this.robotSearchPhase = 0;
+        this.hiddenMovementX = 0;
+        this.hiddenMovementY = 0;
         this.hidingSpots = [
-            { x: 100, y: 100, w: 120, h: 150, name: 'Boom' },
-            { x: 500, y: 100, w: 100, h: 150, name: 'Huis' },
-            { x: 300, y: 400, w: 150, h: 100, name: 'Struik' }
+            { x: 100, y: 100, w: 120, h: 150, name: 'Boom', discovered: false },
+            { x: 500, y: 100, w: 100, h: 150, name: 'Huis', discovered: false },
+            { x: 300, y: 400, w: 150, h: 100, name: 'Struik', discovered: false }
         ];
 
         document.addEventListener('keydown', (e) => this.handleKeyPress(e));
     }
 
     handleKeyPress(e) {
-        for (const spot of this.hidingSpots) {
+        if (this.isHiding) return;
+
+        for (let i = 0; i < this.hidingSpots.length; i++) {
+            const spot = this.hidingSpots[i];
             if (this.playerX > spot.x && this.playerX < spot.x + spot.w &&
                 this.playerY > spot.y && this.playerY < spot.y + spot.h) {
                 if (e.key === ' ') {
                     this.isHiding = true;
+                    this.hidingSpotIndex = i;
+                    this.hiddenMovementX = 0;
+                    this.hiddenMovementY = 0;
                 }
+            }
+        }
+
+        // Allow slow movement while hidden with arrow keys
+        if (this.isHiding && this.hidingSpotIndex >= 0) {
+            const spot = this.hidingSpots[this.hidingSpotIndex];
+            const moveSpeed = 1; // Very slow movement in hiding spot
+
+            if (e.key === 'ArrowUp' || e.key === 'w') {
+                this.hiddenMovementY = Math.max(-20, this.hiddenMovementY - moveSpeed);
+            }
+            if (e.key === 'ArrowDown' || e.key === 's') {
+                this.hiddenMovementY = Math.min(20, this.hiddenMovementY + moveSpeed);
+            }
+            if (e.key === 'ArrowLeft' || e.key === 'a') {
+                this.hiddenMovementX = Math.max(-20, this.hiddenMovementX - moveSpeed);
+            }
+            if (e.key === 'ArrowRight' || e.key === 'd') {
+                this.hiddenMovementX = Math.min(20, this.hiddenMovementX + moveSpeed);
+            }
+
+            // Exit hiding spot with Space
+            if (e.key === ' ' && this.isHiding) {
+                this.isHiding = false;
+                this.hidingSpotIndex = -1;
+                this.hiddenMovementX = 0;
+                this.hiddenMovementY = 0;
             }
         }
     }
@@ -312,20 +614,40 @@ class Level3HideAndSeek extends Level {
         if (result) return result;
 
         if (this.isHiding) {
-            // Safe - add time bonus
+            // Increase blinking for visual feedback
+            this.hidingBlinkCounter++;
             return null;
         }
 
-        // Robot searches and moves
+        // Robot searches and moves with improved pattern
         this.robot.update(this.playerX, this.playerY, this.width, this.height);
-        this.robot.speed += 0.01; // Gets faster over time
+        this.robot.speed += 0.008; // Gets faster over time, but slower than before
 
-        // Check if robot found player
+        // Improved robot search pattern - switches between circular and scanning
+        this.robotSearchPhase += 1;
+        if (this.robotSearchPhase > 300) {
+            this.robotSearchPattern = this.robotSearchPattern === 'circular' ? 'scanning' : 'circular';
+            this.robotSearchPhase = 0;
+        }
+
+        // Check if robot discovers hiding spots
+        for (let i = 0; i < this.hidingSpots.length; i++) {
+            const spot = this.hidingSpots[i];
+            const distToSpot = Math.sqrt(
+                Math.pow(this.robot.x - (spot.x + spot.w / 2), 2) +
+                Math.pow(this.robot.y - (spot.y + spot.h / 2), 2)
+            );
+            if (distToSpot < 150) {
+                this.hidingSpots[i].discovered = true;
+            }
+        }
+
+        // Check if robot found player (only if not hiding)
         if (this.isColliding(this.playerX, this.playerY, this.playerSize, this.robot.x, this.robot.y, this.robot.width)) {
             return 'lose';
         }
 
-        // Win if time runs out and hidden
+        // Win if time runs out and hiding
         if (this.timeRemaining <= 0) {
             return 'win';
         }
@@ -340,35 +662,98 @@ class Level3HideAndSeek extends Level {
     draw(ctx) {
         super.draw(ctx);
 
-        // Draw hiding spots
-        for (const spot of this.hidingSpots) {
-            ctx.fillStyle = this.isHiding && this.playerX > spot.x && this.playerX < spot.x + spot.w ? '#00ff00' : '#444';
+        // Draw hiding spots with improved visuals
+        for (let i = 0; i < this.hidingSpots.length; i++) {
+            const spot = this.hidingSpots[i];
+            const isPlayerHere = this.isHiding && this.hidingSpotIndex === i;
+
+            // Background - darker if discovered
+            if (spot.discovered) {
+                ctx.fillStyle = '#222222';
+            } else {
+                ctx.fillStyle = isPlayerHere ? '#00aa00' : '#444444';
+            }
             ctx.fillRect(spot.x, spot.y, spot.w, spot.h);
-            ctx.strokeStyle = '#00ffff';
-            ctx.lineWidth = 2;
+
+            // Border color changes based on state
+            if (isPlayerHere) {
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 4;
+            } else {
+                ctx.strokeStyle = spot.discovered ? '#ff4444' : '#0099ff';
+                ctx.lineWidth = 2;
+            }
             ctx.strokeRect(spot.x, spot.y, spot.w, spot.h);
 
-            ctx.fillStyle = '#00ffff';
-            ctx.font = '12px Arial';
+            // Hiding spot name
+            ctx.fillStyle = spot.discovered ? '#ff4444' : '#00ffff';
+            ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
             ctx.fillText(spot.name, spot.x + spot.w / 2, spot.y + spot.h / 2);
+
+            // Discovered indicator
+            if (spot.discovered) {
+                ctx.fillStyle = '#ff4444';
+                ctx.font = 'bold 14px Arial';
+                ctx.fillText('ONTDEKT!', spot.x + spot.w / 2, spot.y + spot.h / 2 + 20);
+            }
         }
 
-        // Draw player
-        ctx.fillStyle = this.isHiding ? '#00ff00' : '#0099ff';
-        ctx.beginPath();
-        ctx.arc(this.playerX, this.playerY, this.playerSize / 2, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw player with blinking effect when hidden
+        if (this.isHiding && this.hidingSpotIndex >= 0) {
+            const spot = this.hidingSpots[this.hidingSpotIndex];
+            const baseX = spot.x + spot.w / 2 + this.hiddenMovementX;
+            const baseY = spot.y + spot.h / 2 + this.hiddenMovementY;
+
+            // Blinking effect - player becomes slightly visible
+            const blinkAlpha = (Math.sin(this.hidingBlinkCounter * 0.05) + 1) / 2 * 0.3 + 0.2;
+            ctx.globalAlpha = blinkAlpha;
+            ctx.fillStyle = '#00ff00';
+            ctx.beginPath();
+            ctx.arc(baseX, baseY, this.playerSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
+            // Glow effect around hiding spot
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.arc(baseX, baseY, this.playerSize, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        } else {
+            ctx.fillStyle = '#0099ff';
+            ctx.beginPath();
+            ctx.arc(this.playerX, this.playerY, this.playerSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Draw robot
         this.robot.draw(ctx);
 
-        // Status
+        // Status display
         ctx.fillStyle = '#00ffff';
         ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'left';
-        ctx.fillText(this.isHiding ? 'JE BENT VERBORGEN (Veilig!)' : 'Robot zoekt...', 50, 100);
-        ctx.fillText('Druk SPATIE om te verstoppen', 50, 130);
+
+        if (this.isHiding) {
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText('JE BENT VERBORGEN (Veilig!)', 50, 100);
+            ctx.font = '12px Arial';
+            ctx.fillText('Pijlen = langzaam bewegen, SPATIE = verlaten', 50, 125);
+        } else {
+            ctx.fillStyle = '#ffaa00';
+            ctx.fillText('Robot zoekt...', 50, 100);
+            ctx.font = '12px Arial';
+            ctx.fillText('Druk SPATIE om te verstoppen in een verstopplek', 50, 125);
+        }
+
+        // Draw discovered spots count
+        const discoveredCount = this.hidingSpots.filter(s => s.discovered).length;
+        ctx.fillStyle = '#ff4444';
+        ctx.font = '12px Arial';
+        ctx.fillText(`Spots ontdekt: ${discoveredCount}/${this.hidingSpots.length}`, 50, 145);
     }
 }
 
@@ -387,9 +772,14 @@ class Level4Football extends Level {
         this.ballVX = 0;
         this.ballVY = 0;
         this.ballSize = 12;
+        this.ballGravity = 0.15;
+        this.ballBounceDamping = 0.75;
         this.robot = new RobotFootball(600, 300);
         this.robotScore = 0;
         this.keysPressed = {};
+        this.lastGoalTime = 0;
+        this.goalFeedback = '';
+        this.lastShootTime = 0;
     }
 
     init(width, height) {
@@ -404,6 +794,9 @@ class Level4Football extends Level {
         this.ballVY = 0;
         this.robot.x = 600;
         this.robot.y = 300;
+        this.lastGoalTime = 0;
+        this.goalFeedback = '';
+        this.lastShootTime = 0;
 
         window.addEventListener('keydown', (e) => {
             this.keysPressed[e.key.toLowerCase()] = true;
@@ -415,12 +808,18 @@ class Level4Football extends Level {
     }
 
     shoot() {
+        const now = Date.now();
+        if (now - this.lastShootTime < 300) return; // Prevent rapid shooting
+        this.lastShootTime = now;
+
         const dx = this.ballX - this.playerX;
         const dy = this.ballY - this.playerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance < 50) {
-            this.ballVX = Math.cos(Math.atan2(dy, dx)) * 8;
-            this.ballVY = Math.sin(Math.atan2(dy, dx)) * 8;
+        if (distance < 60) {
+            const angle = Math.atan2(dy, dx);
+            const power = 10;
+            this.ballVX = Math.cos(angle) * power;
+            this.ballVY = Math.sin(angle) * power;
         }
     }
 
@@ -428,7 +827,7 @@ class Level4Football extends Level {
         const result = super.update(gameState);
         if (result) return result;
 
-        // Player movement
+        // Player movement with boundary check
         if (this.keysPressed['arrowup'] || this.keysPressed['w']) {
             this.playerY = Math.max(60, this.playerY - 5);
         }
@@ -436,44 +835,78 @@ class Level4Football extends Level {
             this.playerY = Math.min(this.height - this.playerSize, this.playerY + 5);
         }
         if (this.keysPressed['arrowleft'] || this.keysPressed['a']) {
-            this.playerX = Math.max(0, this.playerX - 5);
+            this.playerX = Math.max(20, this.playerX - 5);
         }
         if (this.keysPressed['arrowright'] || this.keysPressed['d']) {
             this.playerX = Math.min(400, this.playerX + 5);
         }
 
-        // Ball physics
+        // Advanced ball physics with gravity
+        this.ballVY += this.ballGravity; // Apply gravity
         this.ballX += this.ballVX;
         this.ballY += this.ballVY;
-        this.ballVX *= 0.98; // Friction
-        this.ballVY *= 0.98;
 
-        if (this.ballY < 60 || this.ballY > this.height) {
-            this.ballVY = -this.ballVY * 0.8;
+        // Friction/air resistance
+        this.ballVX *= 0.97;
+        this.ballVY *= 0.97;
+
+        // Ground bounce (simulate grass)
+        if (this.ballY >= this.height - 60) {
+            this.ballY = this.height - 60;
+            this.ballVY = -this.ballVY * this.ballBounceDamping;
         }
 
-        // Check goals
-        if (this.ballX < 0 && this.ballY > 200 && this.ballY < 400) {
+        // Wall bounces with better physics
+        if (this.ballY < 60) {
+            this.ballY = 60;
+            this.ballVY = -this.ballVY * this.ballBounceDamping;
+        }
+
+        // Side wall bounces
+        if (this.ballX < 20) {
+            this.ballX = 20;
+            this.ballVX = -this.ballVX * this.ballBounceDamping;
+        }
+        if (this.ballX > this.width - 20) {
+            this.ballX = this.width - 20;
+            this.ballVX = -this.ballVX * this.ballBounceDamping;
+        }
+
+        // Check for goals with proper area
+        const goalTop = 180;
+        const goalBottom = 420;
+
+        if (this.ballX < 20 && this.ballY > goalTop && this.ballY < goalBottom) {
             this.robotScore++;
+            this.lastGoalTime = Date.now();
+            this.goalFeedback = 'ROBOT GOAL!';
             this.resetBall();
         }
-        if (this.ballX > this.width && this.ballY > 200 && this.ballY < 400) {
+        if (this.ballX > this.width - 20 && this.ballY > goalTop && this.ballY < goalBottom) {
             this.playerScore++;
+            this.lastGoalTime = Date.now();
+            this.goalFeedback = 'JIJ GOAL!';
             this.resetBall();
         }
 
-        // Robot AI
+        // Robot AI with improved logic
         this.robot.update(this.ballX, this.ballY, this.width, this.height);
 
-        // Robot shooting
-        if (Math.random() < 0.01) {
+        // Robot shooting with better decision making
+        const distToBall = Math.sqrt(
+            Math.pow(this.robot.x - this.ballX, 2) +
+            Math.pow(this.robot.y - this.ballY, 2)
+        );
+
+        if (distToBall < 80 && Math.random() < 0.08) {
             const shot = this.robot.shoot(this.playerX, this.playerY);
-            if (Math.abs(this.robot.x - this.ballX) < 60) {
+            if (shot) {
                 this.ballVX = shot.vx;
                 this.ballVY = shot.vy;
             }
         }
 
+        // Check win/lose
         if (this.playerScore >= 3) return 'win';
         if (this.robotScore >= 3) return 'lose';
 
@@ -490,32 +923,91 @@ class Level4Football extends Level {
     draw(ctx) {
         super.draw(ctx);
 
-        // Draw goal lines
-        ctx.strokeStyle = '#00ffff';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(0, 200, 20, 200);
-        ctx.strokeRect(this.width - 20, 200, 20, 200);
+        // Draw field background (grass pattern)
+        ctx.fillStyle = '#1a4d1a';
+        ctx.fillRect(0, 0, this.width, this.height);
 
-        // Draw player
+        // Draw field lines
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(this.width / 2, 60);
+        ctx.lineTo(this.width / 2, this.height);
+        ctx.stroke();
+
+        // Draw center circle
+        ctx.beginPath();
+        ctx.arc(this.width / 2, this.height / 2, 40, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Draw goal areas with gradient effect
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+        ctx.fillRect(0, 180, 40, 240);
+        ctx.fillRect(this.width - 40, 180, 40, 240);
+
+        // Draw goal lines (nets)
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 4;
+        const goalTop = 180;
+        const goalBottom = 420;
+        ctx.strokeRect(0, goalTop, 20, goalBottom - goalTop);
+        ctx.strokeRect(this.width - 20, goalTop, 20, goalBottom - goalTop);
+
+        // Draw goal zones more clearly
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.1)';
+        ctx.fillRect(0, goalTop, 20, goalBottom - goalTop);
+        ctx.fillRect(this.width - 20, goalTop, 20, goalBottom - goalTop);
+
+        // Draw player (blue square with better shape)
         ctx.fillStyle = '#0099ff';
         ctx.fillRect(this.playerX - 15, this.playerY - 15, 30, 30);
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.playerX - 15, this.playerY - 15, 30, 30);
 
         // Draw robot
         this.robot.draw(ctx);
 
-        // Draw ball
+        // Draw ball with rotation effect
         ctx.fillStyle = '#ffff00';
         ctx.beginPath();
         ctx.arc(this.ballX, this.ballY, this.ballSize, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = '#ffaa00';
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-        // Draw score
+        // Draw score with larger font
         ctx.fillStyle = '#00ffff';
-        ctx.font = 'bold 24px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(`${this.playerScore}  -  ${this.robotScore}`, 350, 100);
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${this.playerScore}`, 350, 100);
+        ctx.fillText(`${this.robotScore}`, 450, 100);
+
+        // Draw dash between scores
+        ctx.font = 'bold 30px Arial';
+        ctx.fillText('-', 400, 100);
+
+        // Draw goal feedback
+        if (this.goalFeedback && Date.now() - this.lastGoalTime < 1500) {
+            ctx.fillStyle = this.goalFeedback.includes('ROBOT') ? '#ff4444' : '#00ff00';
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.globalAlpha = Math.max(0, 1 - (Date.now() - this.lastGoalTime) / 1500);
+            ctx.fillText(this.goalFeedback, this.width / 2, 150);
+            ctx.globalAlpha = 1.0;
+        }
+
+        // Draw instructions
+        ctx.fillStyle = '#00ffff';
         ctx.font = '14px Arial';
-        ctx.fillText('Pijlen om te bewegen, SPATIE om te schieten', 50, 130);
+        ctx.textAlign = 'left';
+        ctx.fillText('Pijlen: bewegen | SPATIE: schieten', 50, this.height - 30);
+
+        // Draw ball speed indicator
+        const ballSpeed = Math.sqrt(this.ballVX * this.ballVX + this.ballVY * this.ballVY);
+        ctx.font = '12px Arial';
+        ctx.fillText(`Balsnelheid: ${ballSpeed.toFixed(1)}`, 50, this.height - 10);
     }
 }
 
