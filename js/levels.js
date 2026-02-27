@@ -227,8 +227,16 @@ class Level1Memory extends Level {
                 // Robot learns the matched pair
                 this.robot.rememberCard(move.first, this.cards[move.first].value);
                 this.robot.rememberCard(move.second, this.cards[move.first].value);
+
+                // Robot continues its turn (like in real memory)
+                // unless all pairs are done
+                if (this.matchedPairs + this.robotScore < 6) {
+                    this.robotTurn();
+                } else {
+                    this.isProcessing = false;
+                }
             } else {
-                // No match - flip back
+                // No match - flip back, give turn back to player
                 this.cards[move.first].revealed = false;
                 this.cards[move.second].revealed = false;
                 this.cards[move.first].flipDirection = -1;
@@ -237,9 +245,9 @@ class Level1Memory extends Level {
                 // Reset flip animations for backward flip
                 this.cardFlipAnimation[move.first] = { progress: 0.5, duration: 300 };
                 this.cardFlipAnimation[move.second] = { progress: 0.5, duration: 300 };
-            }
 
-            this.isProcessing = false;
+                this.isProcessing = false;
+            }
         }, 600);
     }
 
@@ -267,12 +275,13 @@ class Level1Memory extends Level {
         // Update difficulty scaling
         this.updateDifficulty();
 
-        if (this.matchedPairs >= 6) {
+        if (this.matchedPairs + this.robotScore >= 6) {
             // Clean up event listener before level ends
             if (this.clickHandler && this.canvas) {
                 this.canvas.removeEventListener('click', this.clickHandler);
             }
-            return 'win';
+            // Player wins if they found at least as many pairs as the robot
+            return this.matchedPairs >= this.robotScore ? 'win' : 'lose';
         }
         return null;
     }
