@@ -94,17 +94,28 @@ class Game {
         }
     }
 
+    retryLevel() {
+        document.getElementById('gameOver').style.display = 'none';
+        this.isGameRunning = true;
+        this.gameState.health = 3;
+        this.loadLevel(this.currentLevel);
+    }
+
     gameWon() {
         this.isGameRunning = false;
         document.getElementById('gameOverTitle').textContent = '✨ JE HEBT GEWONNEN! ✨';
         document.getElementById('gameOverMessage').textContent = `Je hebt de Droomkoning verslagen!\nScore: ${this.gameState.score}`;
+        document.getElementById('retryBtn').style.display = 'none';
         document.getElementById('gameOver').style.display = 'block';
     }
 
     gameLost() {
         this.isGameRunning = false;
+        const levelNum = this.currentLevel + 1;
+        const levelName = this.currentLevel === this.levels.length - 1 ? 'de Eindbaas' : `Level ${levelNum}`;
         document.getElementById('gameOverTitle').textContent = 'GAME OVER';
-        document.getElementById('gameOverMessage').textContent = `Je leven zijn op!\nScore: ${this.gameState.score}`;
+        document.getElementById('gameOverMessage').textContent = `Je levens zijn op bij ${levelName}.\nScore: ${this.gameState.score}`;
+        document.getElementById('retryBtn').style.display = 'inline-block';
         document.getElementById('gameOver').style.display = 'block';
     }
 

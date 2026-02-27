@@ -49,6 +49,8 @@ class Level1Memory extends Level {
         this.cardFlipAnimation = {};
         this.isProcessing = false;
         this.difficulty = 1;
+        this.canvas = null;
+        this.lastFlippedCards = { cardIndex: -1, cardValue: null, timestamp: 0 };
     }
 
     init(width, height) {
@@ -62,35 +64,46 @@ class Level1Memory extends Level {
         this.isProcessing = false;
         this.cardFlipAnimation = {};
         this.difficulty = 1;
+        this.lastFlippedCards = { cardIndex: -1, cardValue: null, timestamp: 0 };
+
+        // Get canvas reference
+        this.canvas = document.getElementById('gameCanvas');
 
         // Remove previous handler if it exists to prevent memory leaks
         if (this.clickHandler) {
-            document.removeEventListener('click', this.clickHandler);
+            this.canvas.removeEventListener('click', this.clickHandler);
         }
 
-        // Create and bind handler for this level instance
+        // Create and bind handler specifically to canvas (not document) for this level
         this.clickHandler = (e) => this.handleClick(e);
-        document.addEventListener('click', this.clickHandler);
+        this.canvas.addEventListener('click', this.clickHandler);
     }
 
     createCards() {
         const values = ['🌙', '⭐', '☁️', '💫', '🌟', '✨', '🌙', '⭐', '☁️', '💫', '🌟', '✨'];
-        const cards = values.map((val, idx) => ({
+        // Shuffle first, then assign positions so pairs are never in the same spot
+        const shuffled = values.map(val => ({
             value: val,
             revealed: false,
             matched: false,
-            x: 100 + (idx % 6) * 100,
-            y: 200 + Math.floor(idx / 6) * 100,
-            flipProgress: 0
-        }));
-        return cards.sort(() => Math.random() - 0.5);
+            x: 0,
+            y: 0,
+            flipProgress: 0,
+            flipDirection: 1
+        })).sort(() => Math.random() - 0.5);
+
+        shuffled.forEach((card, idx) => {
+            card.x = 100 + (idx % 6) * 100;
+            card.y = 200 + Math.floor(idx / 6) * 100;
+        });
+
+        return shuffled;
     }
 
     handleClick(e) {
         if (this.isProcessing || this.selectedCards.length >= 2) return;
 
-        const canvas = document.getElementById('gameCanvas');
-        const rect = canvas.getBoundingClientRect();
+        const rect = this.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
@@ -101,8 +114,12 @@ class Level1Memory extends Level {
                 !card.matched && !card.revealed) {
 
                 // Start flip animation
-                this.cardFlipAnimation[i] = { progress: 0, duration: 200 };
+                this.cardFlipAnimation[i] = { progress: 0, duration: 300 };
                 this.selectedCards.push(i);
+                card.revealed = true;
+
+                // Add visual feedback on flip
+                card.flipDirection = 1;
 
                 if (this.selectedCards.length === 2) {
                     this.isProcessing = true;
@@ -118,36 +135,46 @@ class Level1Memory extends Level {
         const card1 = this.cards[idx1];
         const card2 = this.cards[idx2];
 
-        card1.revealed = true;
-        card2.revealed = true;
-
         setTimeout(() => {
             if (card1.value === card2.value) {
                 card1.matched = true;
                 card2.matched = true;
                 this.matchedPairs++;
 
-                // Robot learns the matched cards
+                // Robot learns the matched pair with higher confidence
                 this.robot.rememberCard(idx1, card1.value);
                 this.robot.rememberCard(idx2, card1.value);
 
                 this.isProcessing = false;
                 this.selectedCards = [];
             } else {
+                // Cards don't match - flip them back
                 card1.revealed = false;
                 card2.revealed = false;
+                card1.flipDirection = -1;
+                card2.flipDirection = -1;
 
-                // Reset flip animation
-                delete this.cardFlipAnimation[idx1];
-                delete this.cardFlipAnimation[idx2];
+                // Reset flip animation progress for backward flip
+                this.cardFlipAnimation[idx1] = { progress: 0.5, duration: 300 };
+                this.cardFlipAnimation[idx2] = { progress: 0.5, duration: 300 };
 
                 this.selectedCards = [];
                 this.turnCount++;
 
-                // Robot takes turn with difficulty scaling
+                // Increase difficulty: robot gets smarter after mismatches
+                this.updateDifficulty();
+
+                // Robot takes turn with improved memory system
                 this.robotTurn();
             }
         }, 600);
+    }
+
+    updateDifficulty() {
+        // Difficulty scales from 1.0 to 3.0 based on turn count and robot accuracy
+        const baseDifficulty = 1 + (this.turnCount * 0.15);
+        const accuracyBonus = (this.robotScore / Math.max(this.matchedPairs + this.robotScore, 1)) * 0.5;
+        this.difficulty = Math.min(baseDifficulty + accuracyBonus, 3);
     }
 
     robotTurn() {
@@ -161,87 +188,90 @@ class Level1Memory extends Level {
                 return;
             }
 
+            // Robot AI: try memory-based move with difficulty scaling
             const move = this.robot.getNextMove(availableCards, this.difficulty);
-            if (move) {
-                this.cards[move.first].revealed = true;
-                this.cards[move.second].revealed = true;
 
-                // Start flip animations for robot
-                this.cardFlipAnimation[move.first] = { progress: 0, duration: 200 };
-                this.cardFlipAnimation[move.second] = { progress: 0, duration: 200 };
-
-                setTimeout(() => {
-                    if (this.cards[move.first].value === this.cards[move.second].value) {
-                        this.cards[move.first].matched = true;
-                        this.cards[move.second].matched = true;
-                        this.robotScore++;
-
-                        // Robot learns the matched cards
-                        this.robot.rememberCard(move.first, this.cards[move.first].value);
-                        this.robot.rememberCard(move.second, this.cards[move.first].value);
-                    } else {
-                        this.cards[move.first].revealed = false;
-                        this.cards[move.second].revealed = false;
-
-                        // Reset flip animations
-                        delete this.cardFlipAnimation[move.first];
-                        delete this.cardFlipAnimation[move.second];
-                    }
-
-                    this.isProcessing = false;
-                }, 600);
+            if (move && this.shouldUseMemory()) {
+                this.performRobotMove(move);
             } else {
-                // Robot makes random move if no match found in memory
+                // Robot makes calculated or random move
                 const randomIndices = availableCards.sort(() => 0.5 - Math.random()).slice(0, 2);
                 if (randomIndices.length === 2) {
-                    this.cards[randomIndices[0]].revealed = true;
-                    this.cards[randomIndices[1]].revealed = true;
-
-                    // Start flip animations
-                    this.cardFlipAnimation[randomIndices[0]] = { progress: 0, duration: 200 };
-                    this.cardFlipAnimation[randomIndices[1]] = { progress: 0, duration: 200 };
-
-                    setTimeout(() => {
-                        if (this.cards[randomIndices[0]].value === this.cards[randomIndices[1]].value) {
-                            this.cards[randomIndices[0]].matched = true;
-                            this.cards[randomIndices[1]].matched = true;
-                            this.robotScore++;
-
-                            // Robot learns new cards
-                            this.robot.rememberCard(randomIndices[0], this.cards[randomIndices[0]].value);
-                            this.robot.rememberCard(randomIndices[1], this.cards[randomIndices[0]].value);
-                        } else {
-                            this.cards[randomIndices[0]].revealed = false;
-                            this.cards[randomIndices[1]].revealed = false;
-
-                            // Reset flip animations
-                            delete this.cardFlipAnimation[randomIndices[0]];
-                            delete this.cardFlipAnimation[randomIndices[1]];
-                        }
-
-                        this.isProcessing = false;
-                    }, 600);
+                    this.performRobotMove({ first: randomIndices[0], second: randomIndices[1] });
                 }
             }
-        }, 1000);
+        }, 800);
+    }
+
+    shouldUseMemory() {
+        // Higher difficulty = higher chance of using memory
+        const memoryChance = Math.min(this.difficulty / 3, 1.0);
+        return Math.random() < memoryChance;
+    }
+
+    performRobotMove(move) {
+        this.cards[move.first].revealed = true;
+        this.cards[move.second].revealed = true;
+
+        // Start flip animations for robot's moves
+        this.cardFlipAnimation[move.first] = { progress: 0, duration: 300 };
+        this.cardFlipAnimation[move.second] = { progress: 0, duration: 300 };
+
+        setTimeout(() => {
+            if (this.cards[move.first].value === this.cards[move.second].value) {
+                // Match found!
+                this.cards[move.first].matched = true;
+                this.cards[move.second].matched = true;
+                this.robotScore++;
+
+                // Robot learns the matched pair
+                this.robot.rememberCard(move.first, this.cards[move.first].value);
+                this.robot.rememberCard(move.second, this.cards[move.first].value);
+            } else {
+                // No match - flip back
+                this.cards[move.first].revealed = false;
+                this.cards[move.second].revealed = false;
+                this.cards[move.first].flipDirection = -1;
+                this.cards[move.second].flipDirection = -1;
+
+                // Reset flip animations for backward flip
+                this.cardFlipAnimation[move.first] = { progress: 0.5, duration: 300 };
+                this.cardFlipAnimation[move.second] = { progress: 0.5, duration: 300 };
+            }
+
+            this.isProcessing = false;
+        }, 600);
     }
 
     update(gameState) {
         const result = super.update(gameState);
         if (result) return result;
 
-        // Update flip animations
+        // Update flip animations with smooth easing
         for (const [cardIdx, anim] of Object.entries(this.cardFlipAnimation)) {
-            anim.progress += 1 / 16; // ~60fps
-            if (anim.progress >= 1) {
+            const card = this.cards[cardIdx];
+            if (card.flipDirection === 1) {
+                // Flipping forward (card opening)
+                anim.progress = Math.min(anim.progress + (1 / 16) * (1000 / anim.duration), 1);
+            } else {
+                // Flipping backward (card closing)
+                anim.progress = Math.max(anim.progress - (1 / 16) * (1000 / anim.duration), 0);
+            }
+
+            // Remove animation when complete
+            if (anim.progress >= 1 || anim.progress <= 0) {
                 delete this.cardFlipAnimation[cardIdx];
             }
         }
 
-        // Increase difficulty over time based on turn count
-        this.difficulty = Math.min(1 + (this.turnCount * 0.1), 3);
+        // Update difficulty scaling
+        this.updateDifficulty();
 
         if (this.matchedPairs >= 6) {
+            // Clean up event listener before level ends
+            if (this.clickHandler && this.canvas) {
+                this.canvas.removeEventListener('click', this.clickHandler);
+            }
             return 'win';
         }
         return null;
@@ -250,50 +280,68 @@ class Level1Memory extends Level {
     draw(ctx) {
         super.draw(ctx);
 
-        // Draw cards with flip animation
+        // Draw cards with improved flip animation
         for (let i = 0; i < this.cards.length; i++) {
             const card = this.cards[i];
             const anim = this.cardFlipAnimation[i];
-            const flipProgress = anim ? Math.sin(anim.progress * Math.PI) : 0;
+            const flipProgress = anim ? anim.progress : (card.revealed ? 1 : 0);
+
+            // Calculate 3D flip effect with sine curve
+            const flipScale = Math.sin(flipProgress * Math.PI);
+            const cardWidth = this.cardSize * flipScale;
+            const xOffset = (this.cardSize - cardWidth) / 2;
 
             ctx.save();
 
-            // Apply flip transform (visual feedback for animation)
-            if (flipProgress > 0.1) {
-                ctx.globalAlpha = 1 - flipProgress;
+            // Determine card color based on state
+            let cardColor = '#0099ff';
+            if (card.matched) {
+                cardColor = '#00ff00'; // Green for matched
+            } else if (card.revealed && flipProgress > 0.5) {
+                cardColor = '#ff9900'; // Orange hint when revealing
             }
 
-            ctx.fillStyle = card.matched ? '#00ff00' : '#0099ff';
-            ctx.fillRect(card.x, card.y, this.cardSize, this.cardSize);
-            ctx.strokeStyle = '#00ffff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(card.x, card.y, this.cardSize, this.cardSize);
+            // Draw card with flip effect
+            if (cardWidth > 0.5) {
+                ctx.fillStyle = cardColor;
+                ctx.fillRect(card.x + xOffset, card.y, cardWidth, this.cardSize);
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(card.x + xOffset, card.y, cardWidth, this.cardSize);
+            }
 
-            // Draw card content if revealed or matched
-            if (card.revealed || card.matched) {
-                ctx.fillStyle = '#000';
-                ctx.font = 'bold 30px Arial';
+            // Draw card content only when fully revealed (progress > 0.5)
+            if ((card.revealed || card.matched) && flipProgress > 0.5) {
+                ctx.globalAlpha = Math.min(flipProgress * 2, 1);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 36px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(card.value, card.x + this.cardSize / 2, card.y + this.cardSize / 2);
-            } else if (!anim) {
-                // Show card back pattern
+            } else if (!anim && !card.revealed && !card.matched) {
+                // Show card back pattern when not flipping
                 ctx.fillStyle = '#004d7f';
                 ctx.fillRect(card.x + 8, card.y + 8, this.cardSize - 16, this.cardSize - 16);
+                ctx.strokeStyle = '#0066cc';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(card.x + 8, card.y + 8, this.cardSize - 16, this.cardSize - 16);
             }
 
             ctx.restore();
         }
 
-        // Score display
+        // Score display with enhanced formatting
         ctx.fillStyle = '#00ffff';
-        ctx.font = 'bold 16px Arial';
+        ctx.font = 'bold 18px Arial';
         ctx.textAlign = 'left';
-        ctx.fillText(`Jouw pairs: ${this.matchedPairs}`, 50, 100);
+        ctx.fillText(`Jouw pairs: ${this.matchedPairs}/6`, 50, 100);
         ctx.fillText(`Robot pairs: ${this.robotScore}`, 50, 130);
-        ctx.fillText(`Difficulty: ${this.difficulty.toFixed(1)}x`, 50, 160);
+        ctx.fillText(`Moeilijkheid: ${this.difficulty.toFixed(2)}x`, 50, 160);
+        ctx.font = '12px Arial';
+        ctx.fillText(`Beurten: ${this.turnCount}`, 50, 180);
     }
 }
+
 
 
 // LEVEL 2: TAG
