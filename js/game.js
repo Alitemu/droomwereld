@@ -119,11 +119,30 @@ class Game {
         document.getElementById('gameOver').style.display = 'block';
     }
 
+    goToPreviousLevel() {
+        if (this.currentLevel <= 0) return;
+        this.isGameRunning = false;
+        this.gameState.health = 3;
+        this.loadLevel(this.currentLevel - 1);
+    }
+
+    goToNextLevel() {
+        if (this.currentLevel >= this.levels.length - 1) return;
+        this.isGameRunning = false;
+        this.gameState.health = 3;
+        this.loadLevel(this.currentLevel + 1);
+    }
+
     updateUI() {
-        const level = this.levels[this.currentLevel];
-        const levelName = this.currentLevel === this.levels.length - 1 ? 'Eindbaas - Droomkoning' : `Level ${this.currentLevel + 1}`;
+        const isFirst = this.currentLevel === 0;
+        const isLast  = this.currentLevel === this.levels.length - 1;
+        const levelName = isLast ? 'Eindbaas - Droomkoning' : `Level ${this.currentLevel + 1}`;
+
         document.getElementById('levelInfo').textContent = levelName;
         document.getElementById('score').textContent = `❤️ ${this.gameState.health} | Score: ${this.gameState.score}`;
+
+        document.getElementById('prevLevelBtn').style.display = isFirst ? 'none' : 'inline-block';
+        document.getElementById('nextLevelBtn').style.display = isLast  ? 'none' : 'inline-block';
     }
 }
 

@@ -141,6 +141,21 @@
             0%, 100% { text-shadow: 0 0 20px rgba(0, 255, 255, 0.8); }
             50% { text-shadow: 0 0 40px rgba(0, 255, 255, 1); }
         }
+
+        .navBtn {
+            background: rgba(0, 150, 200, 0.25);
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            padding: 4px 12px;
+            font-size: 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .navBtn:hover { background: rgba(0, 200, 255, 0.4); }
+        .navBtn[style*="none"] { display: none !important; }
+
+        #levelNav { display: flex; align-items: center; }
     </style>
 </head>
 <body>
@@ -151,8 +166,14 @@
             <button class="button" onclick="game.startGame()">Ga Slapen</button>
         </div>
         <div id="ui" style="display: none;">
+            <div id="levelNav">
+                <button class="navBtn" id="prevLevelBtn" onclick="game.goToPreviousLevel()">← Vorige</button>
+            </div>
             <div id="levelInfo"></div>
-            <div id="score"></div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div id="score"></div>
+                <button class="navBtn" id="nextLevelBtn" onclick="game.goToNextLevel()">Volgende →</button>
+            </div>
         </div>
         <canvas id="gameCanvas"></canvas>
         <div id="gameOver">

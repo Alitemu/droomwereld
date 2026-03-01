@@ -628,74 +628,58 @@ class Level3HideAndSeek extends Level {
         this.hidingBlinkCounter = 0;
         this.robot.x = 50;
         this.robot.y = 300;
-        this.robotSearchPattern = 'circular';
         this.robotSearchPhase = 0;
-        this.hiddenMovementX = 0;
-        this.hiddenMovementY = 0;
+        this.keysPressed = {};
         this.hidingSpots = [
-            { x: 100, y: 100, w: 120, h: 150, name: 'Boom', discovered: false },
-            { x: 500, y: 100, w: 100, h: 150, name: 'Huis', discovered: false },
-            { x: 300, y: 400, w: 150, h: 100, name: 'Struik', discovered: false }
+            { x: 100, y: 120, w: 120, h: 150, name: '🌳 Boom', discovered: false },
+            { x: 500, y: 120, w: 100, h: 150, name: '🏠 Huis', discovered: false },
+            { x: 300, y: 420, w: 150, h: 100, name: '🌿 Struik', discovered: false }
         ];
 
-        document.addEventListener('keydown', (e) => this.handleKeyPress(e));
-    }
-
-    handleKeyPress(e) {
-        if (this.isHiding) return;
-
-        for (let i = 0; i < this.hidingSpots.length; i++) {
-            const spot = this.hidingSpots[i];
-            if (this.playerX > spot.x && this.playerX < spot.x + spot.w &&
-                this.playerY > spot.y && this.playerY < spot.y + spot.h) {
-                if (e.key === ' ') {
-                    this.isHiding = true;
-                    this.hidingSpotIndex = i;
-                    this.hiddenMovementX = 0;
-                    this.hiddenMovementY = 0;
+        this.keydownHandler = (e) => {
+            this.keysPressed[e.key.toLowerCase()] = true;
+            // Spatie: verstoppen of verlaten
+            if (e.key === ' ') {
+                if (this.isHiding) {
+                    this.isHiding = false;
+                    this.hidingSpotIndex = -1;
+                } else {
+                    for (let i = 0; i < this.hidingSpots.length; i++) {
+                        const spot = this.hidingSpots[i];
+                        if (this.playerX > spot.x && this.playerX < spot.x + spot.w &&
+                            this.playerY > spot.y && this.playerY < spot.y + spot.h) {
+                            this.isHiding = true;
+                            this.hidingSpotIndex = i;
+                        }
+                    }
                 }
             }
-        }
-
-        // Allow slow movement while hidden with arrow keys
-        if (this.isHiding && this.hidingSpotIndex >= 0) {
-            const spot = this.hidingSpots[this.hidingSpotIndex];
-            const moveSpeed = 1; // Very slow movement in hiding spot
-
-            if (e.key === 'ArrowUp' || e.key === 'w') {
-                this.hiddenMovementY = Math.max(-20, this.hiddenMovementY - moveSpeed);
-            }
-            if (e.key === 'ArrowDown' || e.key === 's') {
-                this.hiddenMovementY = Math.min(20, this.hiddenMovementY + moveSpeed);
-            }
-            if (e.key === 'ArrowLeft' || e.key === 'a') {
-                this.hiddenMovementX = Math.max(-20, this.hiddenMovementX - moveSpeed);
-            }
-            if (e.key === 'ArrowRight' || e.key === 'd') {
-                this.hiddenMovementX = Math.min(20, this.hiddenMovementX + moveSpeed);
-            }
-
-            // Exit hiding spot with Space
-            if (e.key === ' ' && this.isHiding) {
-                this.isHiding = false;
-                this.hidingSpotIndex = -1;
-                this.hiddenMovementX = 0;
-                this.hiddenMovementY = 0;
-            }
-        }
+        };
+        this.keyupHandler = (e) => { this.keysPressed[e.key.toLowerCase()] = false; };
+        window.addEventListener('keydown', this.keydownHandler);
+        window.addEventListener('keyup', this.keyupHandler);
     }
 
     update(gameState) {
-        const result = super.update(gameState);
-        if (result) return result;
+        // Eigen tijdscheck: als tijd op is terwijl je verstopt bent = WIN
+        this.timeRemaining = this.timeLimit - Math.floor((Date.now() - this.startTime) / 1000);
+        if (this.timeRemaining <= 0) {
+            return this.isHiding ? 'win' : 'lose';
+        }
 
         if (this.isHiding) {
-            // Increase blinking for visual feedback
             this.hidingBlinkCounter++;
             return null;
         }
 
-        // Robot searches and moves with improved pattern
+        // Spelerbeweging
+        const speed = 4;
+        if (this.keysPressed['arrowup']    || this.keysPressed['w']) this.playerY = Math.max(70,  this.playerY - speed);
+        if (this.keysPressed['arrowdown']  || this.keysPressed['s']) this.playerY = Math.min(560, this.playerY + speed);
+        if (this.keysPressed['arrowleft']  || this.keysPressed['a']) this.playerX = Math.max(50,  this.playerX - speed);
+        if (this.keysPressed['arrowright'] || this.keysPressed['d']) this.playerX = Math.min(750, this.playerX + speed);
+
+        // Robot zoekt en beweegt
         this.robot.update(this.playerX, this.playerY, this.width, this.height);
         this.robot.speed += 0.008; // Gets faster over time, but slower than before
 
@@ -808,28 +792,34 @@ class Level3HideAndSeek extends Level {
         // Draw robot
         this.robot.draw(ctx);
 
-        // Status display
-        ctx.fillStyle = '#00ffff';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'left';
+        // Doel en instructies bovenaan
+        ctx.font = 'bold 17px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffff00';
+        ctx.fillText('🙈 VERSTOPPERTJE — Verstop je tot de tijd om is!', this.width / 2, 80);
+        ctx.font = '13px Arial';
+        ctx.fillStyle = '#aaddff';
+        ctx.fillText('WASD / pijlen = bewegen  |  SPATIE in een verstopplek = verstoppen  |  SPATIE nogmaals = verlaten', this.width / 2, 100);
 
+        // Status
+        ctx.textAlign = 'left';
         if (this.isHiding) {
             ctx.fillStyle = '#00ff00';
-            ctx.fillText('JE BENT VERBORGEN (Veilig!)', 50, 100);
-            ctx.font = '12px Arial';
-            ctx.fillText('Pijlen = langzaam bewegen, SPATIE = verlaten', 50, 125);
+            ctx.font = 'bold 15px Arial';
+            ctx.fillText('✅ JE BENT VERBORGEN — wacht tot de tijd om is!', 50, 120);
         } else {
-            ctx.fillStyle = '#ffaa00';
-            ctx.fillText('Robot zoekt...', 50, 100);
-            ctx.font = '12px Arial';
-            ctx.fillText('Druk SPATIE om te verstoppen in een verstopplek', 50, 125);
+            ctx.fillStyle = '#ff8800';
+            ctx.font = 'bold 15px Arial';
+            ctx.fillText('⚠️ Robot zoekt jou! Loop naar een verstopplek en druk SPATIE', 50, 120);
         }
 
-        // Draw discovered spots count
+        // Ontdekte spots
         const discoveredCount = this.hidingSpots.filter(s => s.discovered).length;
-        ctx.fillStyle = '#ff4444';
-        ctx.font = '12px Arial';
-        ctx.fillText(`Spots ontdekt: ${discoveredCount}/${this.hidingSpots.length}`, 50, 145);
+        if (discoveredCount > 0) {
+            ctx.fillStyle = '#ff4444';
+            ctx.font = '13px Arial';
+            ctx.fillText(`⚠️ ${discoveredCount} verstopplek(ken) ontdekt door robot!`, 50, 140);
+        }
     }
 }
 
