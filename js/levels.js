@@ -436,8 +436,11 @@ class Level2Tag extends Level {
     }
 
     update(gameState) {
-        const result = super.update(gameState);
-        if (result) return result;
+        // Eigen tijdscheck: tijd op = WIN (overleefd!), niet lose
+        this.timeRemaining = this.timeLimit - Math.floor((Date.now() - this.startTime) / 1000);
+        if (this.timeRemaining <= 0) {
+            return 'win';
+        }
 
         // Player movement with wall collision
         let newX = this.playerX;
@@ -539,6 +542,15 @@ class Level2Tag extends Level {
     draw(ctx) {
         super.draw(ctx);
 
+        // Doel uitleg bovenaan
+        ctx.fillStyle = '#ffff00';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🏃 TIKKERTJES — Ontloop de robot! Overleef 60 seconden!', this.width / 2, 85);
+        ctx.font = '13px Arial';
+        ctx.fillStyle = '#aaddff';
+        ctx.fillText('Beweeg met pijltjestoetsen of WASD  |  Raak de robot = verlies een leven', this.width / 2, 105);
+
         // Draw boundary walls
         ctx.fillStyle = '#444444';
         ctx.lineWidth = 3;
@@ -564,17 +576,24 @@ class Level2Tag extends Level {
         ctx.strokeStyle = '#00ffff';
         ctx.lineWidth = 2;
         ctx.stroke();
+        // Label boven speler
+        ctx.fillStyle = '#00ffff';
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('JIJ', this.playerX + this.playerSize / 2, this.playerY - 5);
 
         // Draw robot
         this.robot.draw(ctx);
+        ctx.fillStyle = '#ff4444';
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('ROBOT', this.robot.x + this.robot.width / 2, this.robot.y - 5);
 
-        // Draw points and distance bonus
+        // Moeilijkheid indicator (rechts)
         ctx.fillStyle = '#00ffff';
-        ctx.font = 'bold 20px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(`Punten: ${this.points}`, 50, 100);
-        ctx.fillText(`Afstand: ${Math.floor(this.distance)}px (Bonus: +${this.distanceBonus * 5})`, 50, 130);
-        ctx.fillText(`Moeilijkheid: ${this.robot.difficulty.toFixed(1)}x`, 50, 160);
+        ctx.font = '13px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(`Robot snelheid: ${this.robot.difficulty.toFixed(1)}x`, this.width - 20, 85);
     }
 }
 
