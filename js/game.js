@@ -47,6 +47,7 @@ class Game {
         }
 
         this.currentLevel = levelIndex;
+        this.isGameRunning = true;
         const level = this.levels[levelIndex];
         level.init(this.canvas.width, this.canvas.height);
         this.updateUI();
