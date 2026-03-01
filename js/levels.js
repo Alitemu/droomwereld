@@ -385,6 +385,9 @@ class Level2Tag extends Level {
         this.distanceBonus = 0;
         this.robot.x = 100;
         this.robot.y = 100;
+        // Robot is 0.8x spelerssnelheid, geen moeilijkheidsschaling
+        this.robot.speed = this.playerSpeed * 0.8;
+        this.robot.difficulty = 1;
         this.createWalls();
         this.createBoundaryWalls();
 
@@ -513,8 +516,6 @@ class Level2Tag extends Level {
             }
         }
 
-        this.robot.increaseDifficulty();
-
         // Improved circular collision detection with better accuracy
         if (this.isColliding(this.playerX, this.playerY, this.playerSize, this.robot.x, this.robot.y, this.robot.width)) {
             return 'lose';
@@ -550,6 +551,17 @@ class Level2Tag extends Level {
         ctx.font = '13px Arial';
         ctx.fillStyle = '#aaddff';
         ctx.fillText('Beweeg met pijltjestoetsen of WASD  |  Raak de robot = verlies een leven', this.width / 2, 105);
+
+        // Afteltimer — groot en duidelijk, bovenop de grenssmuur
+        const urgent = this.timeRemaining <= 10;
+        ctx.fillStyle = urgent ? '#ff3333' : '#ffffff';
+        ctx.font = `bold ${urgent ? 32 : 26}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText(`⏱ ${this.timeRemaining}s`, this.width / 2, 45);
+        if (urgent) {
+            ctx.fillStyle = 'rgba(255,50,50,0.25)';
+            ctx.fillRect(this.width / 2 - 60, 20, 120, 35);
+        }
 
         // Draw boundary walls
         ctx.fillStyle = '#444444';
