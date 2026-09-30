@@ -2,7 +2,7 @@
 
 ## Concept
 
-Een kind valt in slaap en wordt door een portaal boven het bed de droomwereld in gezogen. Daar heerst **MEESTER ROBOT**. Hij daagt je uit voor 9 spelletjes tegen zijn robothelper. Daarna volgt de eindstrijd tegen MEESTER ROBOT zelf. Versla hem en je wordt 's ochtends wakker in je eigen slaapkamer.
+Een kind valt in slaap en wordt door een portaal boven het bed de droomwereld in gezogen. Daar heerst **MEESTER ROBOT**. Hij daagt je uit voor 10 spelletjes tegen zijn robothelper. Daarna volgt de eindstrijd tegen MEESTER ROBOT zelf. Versla hem en je wordt 's ochtends wakker in je eigen slaapkamer.
 
 Het hele spel is 3D (Three.js) en draait volledig in de browser vanuit één bestand: `index.html`.
 
@@ -12,19 +12,19 @@ Het hele spel is 3D (Three.js) en draait volledig in de browser vanuit één bes
 
 1. **Intro:** slaapkamer bij nacht, het portaal opent. Klik of druk op een toets om over te slaan.
 2. **Titelscherm:** knop **BEGIN DE DROOM!**
-3. **Levelkaart:** toont het huidige level met naam en uitleg, plus bolletjes 1 t/m 10 waarmee je naar elk level kunt springen. Knop **START!**
+3. **Levelkaart:** toont het huidige level met naam en uitleg, plus bolletjes 1 t/m 11 waarmee je naar elk level kunt springen. Knop **START!**
 4. **Level spelen:** elk level start met een aftelling. Met de ✕ knop of **Escape** kun je stoppen; het level telt dan niet mee.
 5. **Resultaat:**
    * Gewonnen: **VOLGENDE UITDAGING**
    * Verloren: **OPNIEUW PROBEREN** of **OVERSLAAN** (overslaan kan niet bij de eindbaas)
-6. Na level 9 volgt een intro van de eindbaas, daarna level 10.
+6. Na level 10 volgt een intro van de eindbaas, daarna level 11.
 7. **Overwinning:** vuurwerk, daarna de ochtendscène: *"Het was allemaal een droom... maar jij WON!"* met knop **OPNIEUW SPELEN**.
 
 Er zijn geen levens. Het spel houdt alleen bij hoeveel levels je gewonnen en verloren hebt. Een level dat je ooit gewonnen hebt, blijft gewonnen.
 
 **Voortgang wordt bewaard** in de browser. Kom je terug, dan staat op het titelscherm **VERDER SPELEN** (en **NIEUW SPEL** om opnieuw te beginnen). Na de ochtendscène wordt de voortgang gewist.
 
-**Gelijkspel betekent altijd: de robot wint.** Dat geldt voor level 1, 6, 7 en 8.
+**Gelijkspel betekent altijd: de robot wint.** Dat geldt voor level 1, 6, 7, 8 en 10.
 
 ---
 
@@ -95,6 +95,16 @@ Een endless runner zoals Subway Surfers, op zwevende droomrails met 3 banen. Jij
 * **Winnen:** de finish op 900 meter halen zonder gepakt te worden.
 * **Besturing:** ←/→ of A/D = van baan wisselen, ↑, W of SPATIE = springen, ↓ of S = rollen (in de lucht: snel naar beneden). Touch: vegen in die richting, tikken = springen.
 
+### Level 10: Boogschieten 🏹
+Schiet met pijl en boog op een 🎯 aan het eind van een grasveld. 5 rondes; per ronde schiet jij eerst en dan de robot, onder precies dezelfde omstandigheden.
+* Elke ronde staat het doel verder weg: 16, 20, 24, 28 en 32 meter. Vanaf ronde 2 waait er wind (vlag bij het doel en de balk bovenin). In ronde 4 en 5 zweeft het doel heen en weer.
+* De pijl zakt door de zwaartekracht en waait mee met de wind. Richt dus iets **boven** de roos en **tegen de wind in**, en bij een bewegend doel iets **vóór** het doel.
+* Hoe langer je vasthoudt, hoe strakker de boog (1 seconde = vol). Houd je langer dan ruim 2 seconden vast, dan gaat je arm trillen.
+* Ronde 1 laat met een gele stippellijn zien waar je pijl heen gaat.
+* Punten: geel 10, rood 8, blauw 6, zwart 4, wit 2, mis 0.
+* **Winnen:** meer punten dan de robot na 5 rondes (de robot haalt gemiddeld ongeveer 30 van de 50).
+* **Besturing:** muis bewegen = richten, ingedrukt houden = spannen, loslaten = schieten. Toetsenbord: pijltjes of WASD = richten, SPATIE vasthouden = spannen. Touch: tik en houd vast, schuif om te richten, laat los.
+
 ---
 
 ## Eindbaas: MEESTER ROBOT 👑
@@ -112,7 +122,7 @@ Een gevecht in drie fases in een donkere arena. Faal je in een fase, dan begin j
 * **Eén bestand:** `index.html` bevat Three.js r147 en alle spelcode als losse `<script>` blokken.
 * **`engine.js`:** gedeelde 3D hulpfuncties onder `window.DW`: vormen en materialen, personages (`makeCharacter`, `setMood`), droomomgeving, deeltjes, HUD, geluid (Web Audio, geen geluidsbestanden) en invoer. Hier staan ook de levelnamen (`DW.meta`).
 * **`framework.js`:** renderer, game loop, schermen (intro, titel, levelkaart, resultaat, eindbaas, overwinning, ochtend), voortgang, stopknop, geluidsknop en touch-besturing.
-* **`level1.js` t/m `level10.js`:** elk level registreert zich met `DW.registerLevel(n, level)`. Level 10 is de eindbaas. Het aantal levels staat in `framework.js` als `NUM`; de eindbaas is altijd `BOSS = NUM - 1` (0-based).
+* **`level1.js` t/m `level11.js`:** elk level registreert zich met `DW.registerLevel(n, level)`. Level 11 is de eindbaas. Het aantal levels staat in `framework.js` als `NUM`; de eindbaas is altijd `BOSS = NUM - 1` (0-based).
 
 Werkt met toetsenbord en muis én op touchscreens (virtuele joystick en actieknoppen). Touch forceren of uitzetten kan met `?touch=1` of `?touch=0` achter de URL.
 

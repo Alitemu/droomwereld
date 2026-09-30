@@ -6,7 +6,7 @@ Dit document beschrijft het spel zoals het nu in `index.html` gebouwd is. Gebrui
 
 ## Concept
 
-Een kind valt in slaap en wordt door een portaal de droomwereld in gezogen, waar **MEESTER ROBOT** heerst. Het kind speelt 9 minigames tegen een robot en daarna een eindgevecht in 3 fases tegen MEESTER ROBOT. Na de overwinning wordt het kind wakker in de slaapkamer.
+Een kind valt in slaap en wordt door een portaal de droomwereld in gezogen, waar **MEESTER ROBOT** heerst. Het kind speelt 10 minigames tegen een robot en daarna een eindgevecht in 3 fases tegen MEESTER ROBOT. Na de overwinning wordt het kind wakker in de slaapkamer.
 
 Doelgroep: kinderen op de basisschool. Alle tekst in het spel is Nederlands.
 
@@ -27,7 +27,7 @@ Doelgroep: kinderen op de basisschool. Alle tekst in het spel is Nederlands.
 vendor/three.min.js
 src/engine.js
 src/framework.js
-src/level1.js ... src/level10.js
+src/level1.js ... src/level11.js
 ```
 
 Het framework start pas na `window.load`, dus levelbestanden mogen in elke volgorde na `engine.js` staan.
@@ -40,7 +40,7 @@ Het framework start pas na `window.load`, dus levelbestanden mogen in elke volgo
 
 | Onderdeel | Functies |
 |---|---|
-| Registratie | `registerLevel(n, level)` met n = 1..10 (10 = eindbaas), `meta` (naam, uitleg, icoon per level) |
+| Registratie | `registerLevel(n, level)` met n = 1..11 (11 = eindbaas), `meta` (naam, uitleg, icoon per level) |
 | Rekenen | `clamp`, `lerp`, `damp`, `angleLerp`, `rand`, `randInt`, `pick`, `shuffle`, `ease` |
 | 3D bouwstenen | `mat`, `mesh`, `box`, `roundedBox`, `sphere`, `cyl`, `cone`, `capsule`, `canvasTexture`, `makeLabel` |
 | Scène | `addLights`, `dreamEnvironment` (lucht, sterren, maan, zwevende lichtbollen, mist), `disposeScene`, `raycast`, `findUp` |
@@ -52,7 +52,7 @@ Het framework start pas na `window.load`, dus levelbestanden mogen in elke volgo
 
 ### `framework.js`: de spelschil
 
-Het aantal levels staat als `NUM` (nu 10) bovenin; de eindbaas is altijd de laatste (`BOSS = NUM - 1`, 0-based). Een level toevoegen: level-script vóór de eindbaas zetten, `NUM` ophogen, de eindbaas een nummer hoger registreren, een regel in `DW.meta`, een kleur in `PAL` en een `case` in `addProps` (het eilandje op de levelkaart). Verhoog ook de versie van `SAVE_KEY`.
+Het aantal levels staat als `NUM` (nu 11) bovenin; de eindbaas is altijd de laatste (`BOSS = NUM - 1`, 0-based). Een level toevoegen: level-script vóór de eindbaas zetten, `NUM` ophogen, de eindbaas een nummer hoger registreren, een regel in `DW.meta`, een kleur in `PAL` en een `case` in `addProps` (het eilandje op de levelkaart). Verhoog ook de versie van `SAVE_KEY`.
 
 Renderer, game loop (`requestAnimationFrame`, `dt` begrensd op 0,05 s), schermen, voortgang, stopknop, geluidsknop en touch-besturing. Fouten in een level worden gelogd maar laten het spel niet crashen; ontbreekt een level, dan toont het framework een scherm met **OVERSLAAN**.
 
@@ -78,16 +78,16 @@ Elk level is een object dat zich registreert met `DW.registerLevel(n, level)`:
 
 1. **Intro:** slaapkamer bij nacht, portaal opent boven het bed. Overslaan met klik of toets.
 2. **Titel:** "DE DROOM WERELD", MEESTER ROBOT en het kind op een zwevend eiland. Knop **BEGIN DE DROOM!**
-3. **Levelkaart:** naam, icoon en uitleg van het level, gewonnen/verloren-telling, bolletjes 1 t/m 10 om direct naar een level te springen, knop **START!**
+3. **Levelkaart:** naam, icoon en uitleg van het level, gewonnen/verloren-telling, bolletjes 1 t/m 11 om direct naar een level te springen, knop **START!**
 4. **Level:** aftelling, spelen. De ✕ knop of Escape pauzeert en vraagt "Level stoppen?"; stoppen gaat terug naar de levelkaart en telt niet mee.
 5. **Resultaat:** bij winst **VOLGENDE UITDAGING**; bij verlies **OPNIEUW PROBEREN** en **OVERSLAAN** (niet bij de eindbaas).
-6. Na level 9: **eindbaas-intro** (rode arena, bliksem), daarna level 10.
+6. Na level 10: **eindbaas-intro** (rode arena, bliksem), daarna level 11.
 7. **Overwinning** (vuurwerk, ±6,5 s) en **ochtend**: "Het was allemaal een droom... maar jij WON!" met **OPNIEUW SPELEN**.
 
 ### Voortgang
 
 * Geen levens en geen puntentotaal. Per level wordt `won` of `lost` bijgehouden; een gewonnen level blijft gewonnen.
-* Voortgang (`idx` en `results`) wordt bewaard in `localStorage` onder `droomwereld-voortgang-v2` (v2 sinds er 10 levels zijn; oude v1-voortgang wordt genegeerd), bij elke levelkaart en elk resultaat. Alle toegang zit in try/catch: werkt opslag niet, dan speelt het spel gewoon zonder.
+* Voortgang (`idx` en `results`) wordt bewaard in `localStorage` onder `droomwereld-voortgang-v3` (de versie gaat omhoog bij elke wijziging in het aantal levels; oudere voortgang wordt genegeerd), bij elke levelkaart en elk resultaat. Alle toegang zit in try/catch: werkt opslag niet, dan speelt het spel gewoon zonder.
 * Titelscherm met bewaarde voortgang: **VERDER SPELEN (LEVEL n)** en **NIEUW SPEL**. Zonder: **BEGIN DE DROOM!**
 * NIEUW SPEL, OPNIEUW SPELEN en de ochtendscène wissen de bewaarde voortgang.
 * Bij een gelijkspel wint altijd de robot.
@@ -107,7 +107,8 @@ Elk level is een object dat zich registreert met `DW.registerLevel(n, level)`:
 | 7 | Trivia Quiz 🎤 | Meer goede antwoorden (van 10) | Klik of 1-4 |
 | 8 | Ruimtegevecht 🚀 | Meer punten in 60 s | WASD + SPATIE |
 | 9 | Treinrennen 🚂 | 900 m halen zonder gepakt te worden | Pijltjes/WASD of vegen |
-| 10 | MEESTER ROBOT 👑 | Alle 3 fases winnen | Zie hieronder |
+| 10 | Boogschieten 🏹 | Meer punten dan de robot na 5 pijlen | Muis/touch of pijltjes + SPATIE |
+| 11 | MEESTER ROBOT 👑 | Alle 3 fases winnen | Zie hieronder |
 
 ### Level 1: Geheugenspel
 * 3D speeltafel, 16 kaarten (8 paren): ster, hart, maan, zon, wolk, bliksem, bloem, diamant.
@@ -177,9 +178,19 @@ Elk level is een object dat zich registreert met `DW.registerLevel(n, level)`:
 * Besturing: ←/→/A/D wisselen, ↑/W/SPATIE springen, ↓/S rollen (in de lucht: snel omlaag). Touch: vegen (drempel 0,12 in schermcoördinaten), tikken = springen.
 * Getest met een simpele autopilot: haalt de finish zonder te struikelen; niets doen = gepakt rond 250 m.
 
+### Level 10: Boogschieten
+* 5 rondes (`ROUNDS`): afstand 16/20/24/28/32 m; wind vanaf ronde 2 (willekeurige richting, sterkte 0,35 tot 1); bewegend doel in ronde 4 en 5 (`bobX(t) = sin(0,45 t) × 1,5`). Per ronde schiet eerst de speler, dan de robot, met dezelfde wind.
+* Doel: straal `R` = 1,1 op hoogte 1,7, 5 ringen van 0,22: 10 (geel), 8 (rood), 6 (blauw), 4 (zwart), 2 (wit), anders 0.
+* Pijl: startsnelheid 20 tot 44 m/s afhankelijk van de spanning (`DRAW_T` = 1 s voor vol), zwaartekracht 6 m/s², zijwind 1,6 × wind m/s². De functie `flight()` rekent de baan uit en wordt gebruikt voor de hulplijn (alleen ronde 1) en voor de robot; de pijl zelf gebruikt dezelfde natuurkunde.
+* Richten: de muis/vinger wijst een punt op het vlak van het doel aan (raycast). Het vizier zwiept licht; na `SHAKE_AFTER` = 2,2 s vasthouden gaat het steeds harder trillen. Tijdens het spannen zoomt de camera in (fov 50 → 30). Loslaten onder 15% spanning schiet niet (melding "Houd langer vast!").
+* Camera: over de schouder bij het richten, volgt daarna de pijl, en toont het doel met "+8" of "ROOS! +10".
+* Robot-AI: rekent de perfecte richting uit (ook vóór het bewegende doel), telt daar een willekeurige fout bij op (spreiding groeit met de afstand) en schiet altijd met volle spanning. Gemiddeld 7,6 / 6,8 / 5,9 / 5,0 / 4,3 punten per ronde, ongeveer 30 van 50.
+* Getest: een perfecte schutter haalt 50 van 50, dus elke ronde is haalbaar.
+* Gelijkspel = robot wint.
+
 ---
 
-## Level 10: MEESTER ROBOT (eindbaas)
+## Level 11: MEESTER ROBOT (eindbaas)
 
 Arena met een reusachtige robot met kroon. De eindbaas kan niet verloren worden: faal je in een fase, dan begint alleen die fase opnieuw ("FASE X OPNIEUW!"). Na fase 3 volgt de overwinning.
 
@@ -207,6 +218,7 @@ Arena met een reusachtige robot met kroon. De eindbaas kan niet verloren worden:
 
 * **Joystick** in levels 2, 4, 5, 8 en in fase 1 van de eindbaas.
 * **Vegen** in level 9 (Treinrennen).
+* **Tik, houd vast en schuif** in level 10 (Boogschieten).
 * **Actieknop:** SCHIET in level 4, VUUR in level 8.
 * Overige levels werken met tikken op objecten of knoppen.
 
