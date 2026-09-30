@@ -22,6 +22,8 @@ Het hele spel is 3D (Three.js) en draait volledig in de browser vanuit één bes
 
 Er zijn geen levens. Het spel houdt alleen bij hoeveel levels je gewonnen en verloren hebt. Een level dat je ooit gewonnen hebt, blijft gewonnen.
 
+**Voortgang wordt bewaard** in de browser. Kom je terug, dan staat op het titelscherm **VERDER SPELEN** (en **NIEUW SPEL** om opnieuw te beginnen). Na de ochtendscène wordt de voortgang gewist.
+
 **Gelijkspel betekent altijd: de robot wint.** Dat geldt voor level 1, 6, 7 en 8.
 
 ---
@@ -45,7 +47,9 @@ De robot is 'm op een zwevend snoepeiland met paddenstoelen, lolly's, kristallen
 ### Level 3: Verstoppertje 🙈
 Een diorama op tafel met 9 verstopplekken (rood huisje, schuur, grote boom, tent, houten kist, vat, tunnel, hooiberg, hondenhok). Een reuzenrobot zoekt met een vergrootglas.
 * Je hebt 6 seconden om een plek te kiezen (of druk op **Klaar!**).
-* De robot doorzoekt maximaal 8 van de 9 plekken. Tijdens het zoeken mag je **één keer verhuizen**, maar er is 50% kans dat de robot je hoort en meteen op je nieuwe plek kijkt.
+* De robot doorzoekt 6 van de 9 plekken in willekeurige volgorde. Doorzochte plekken krijgen een groen ✓.
+* Tijdens het zoeken mag je **één keer verhuizen**. De slimme zet: sluip naar een plek met een ✓, want daar komt de robot niet meer terug. Timing is alles: verhuis je terwijl de robot in een plek kijkt ("NU sluipen!"), dan hoort hij je maar in 15% van de gevallen. Verhuis je op een ander moment, dan in 70%.
+* Blijf je gewoon zitten, dan win je een ronde 1 op de 3 keer. Met goed getimed sluipen ongeveer 3 op de 4 keer.
 * **Winnen:** best of 3 rondes (eerste die 2 rondes wint).
 * **Besturing:** klik of tik op een plek.
 
@@ -78,7 +82,8 @@ Een tv-quizstudio. 10 vragen, willekeurig gekozen uit 51 (rekenen, taal, aardrij
 ### Level 8: Ruimtegevecht 🚀
 Twee ruimteschepen naast elkaar schieten 60 seconden lang op aanstormende asteroïden.
 * Gewone asteroïde = 1 punt, gouden asteroïde = 2 punten. Grote asteroïden moet je twee keer raken. Het tempo gaat omhoog naarmate de tijd verstrijkt.
-* De robot richt niet perfect en verspilt soms schoten.
+* **Ontwijken telt:** raak je een asteroïde, dan verlies je 2 punten en kun je 1,2 seconde niet schieten (je schip knippert). Dat geldt ook voor de robot.
+* De robot richt niet perfect, verspilt soms schoten en ziet ongeveer 1 op de 4 aanstormende asteroïden te laat.
 * **Winnen:** meer punten dan de robot.
 * **Besturing:** WASD of pijltjes om te vliegen, SPATIE om te schieten (touch: joystick + VUUR).
 

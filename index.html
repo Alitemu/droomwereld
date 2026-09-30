@@ -455,6 +455,20 @@
   function clearTimers() { extraTimers.forEach(clearTimeout); extraTimers = []; }
   function clearKeys() { for (const k in DW.input.keys) delete DW.input.keys[k]; DW.input.pointer.down = false; touchReset(); }
   const meta = (i) => DW.meta[i] || { name: 'Level ' + (i + 1), desc: '', icon: '?' };
+  // ---- voortgang bewaren in de browser (mag stil mislukken, bv. in een privévenster)
+  const SAVE_KEY = 'droomwereld-voortgang-v1';
+  function recount() { G.won = G.results.filter((r) => r === 'won').length; G.lost = G.results.filter((r) => r === 'lost').length; }
+  function saveProgress() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ idx: G.idx, results: G.results })); } catch (e) { } }
+  function clearProgress() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } }
+  function loadProgress() {
+    try {
+      const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!d || !Array.isArray(d.results)) return null;
+      const results = []; d.results.slice(0, 9).forEach((r, k) => { if (r === 'won' || r === 'lost') results[k] = r; });
+      if (!results.some(Boolean)) return null;
+      return { idx: DW.clamp(Math.floor(+d.idx || 0), 0, 8), results };
+    } catch (e) { return null; }
+  }
+  function resetGame() { G.idx = 0; G.won = 0; G.lost = 0; G.results = []; G.kidAt = null; clearProgress(); }
   function ui(cls, html) { const d = document.createElement('div'); d.className = 'dwf-ui ' + (cls || ''); d.innerHTML = html || ''; DW.hud.layer.appendChild(d); return d; }
   function btn(label, fn, parent, alt, cls) { const b = DW.hud.button(label, () => { if (busy) return; fn(); }, { parent, alt }); if (cls) b.classList.add(cls); return b; }
   function setState(s) { state = s; if (muteBtn) muteBtn.classList.toggle('playing', s === 'PLAYING'); if (quitBtn) quitBtn.style.display = s === 'PLAYING' ? 'flex' : 'none'; if (s !== 'PLAYING') closeConfirm(); }
@@ -710,7 +724,11 @@
     ui('', `<div class="dwf-top"><div class="dwf-title">DE DROOM WERELD</div><div class="dwf-sub">✦ EEN DROOMAVONTUUR ✦</div></div>
       <div class="dwf-bot"><div class="dwf-story">Welkom in de <b>DROOMwereld</b>! Hier heerst <em>MEESTER ROBOT</em>.<br>Hij daagt je uit voor <b>8 spelletjes</b>... Win ze allemaal en versla hem om de droomwereld te bevrijden!</div></div>`);
     const bot = DW.hud.layer.querySelector('.dwf-bot');
-    btn('BEGIN DE DROOM!', () => { DW.sfx.play('good'); G.idx = 0; G.won = 0; G.lost = 0; G.results = []; G.kidAt = null; gotoHub(0); }, bot, false, 'dwf-startbtn');
+    const saved = loadProgress();
+    if (saved) {
+      btn('VERDER SPELEN (LEVEL ' + (saved.idx + 1) + ')', () => { DW.sfx.play('good'); G.results = saved.results; G.kidAt = null; recount(); gotoHub(saved.idx); }, bot, false, 'dwf-startbtn');
+      btn('NIEUW SPEL', () => { DW.sfx.play('good'); resetGame(); gotoHub(0); }, bot, true);
+    } else btn('BEGIN DE DROOM!', () => { DW.sfx.play('good'); resetGame(); gotoHub(0); }, bot, false, 'dwf-startbtn');
     return {
       scene, camera,
       update(dt, t) {
@@ -920,7 +938,7 @@
     DW.hud.clear(); DW.sfx.play('good');
     const layer = ui('', '<div class="dwf-top"><div class="dwf-story" style="background:rgba(255,246,225,.88);color:#3a2060;border-color:#ffb84a;font-size:clamp(18px,3.2vw,34px);font-weight:800">Het was allemaal een droom... maar jij <b style="color:#e0602a">WON</b>! ☀️</div></div><div class="dwf-bot"></div>');
     const bot = layer.querySelector('.dwf-bot');
-    btn('OPNIEUW SPELEN', () => { G.idx = 0; G.won = 0; G.lost = 0; G.results = []; G.kidAt = null; transition(() => gotoTitle(), '#000', 400); }, bot, false, 'dwf-startbtn');
+    btn('OPNIEUW SPELEN', () => { resetGame(); transition(() => gotoTitle(), '#000', 400); }, bot, false, 'dwf-startbtn');
     return {
       scene, camera,
       update(dt, t) {
@@ -936,7 +954,7 @@
   function gotoIntro() { setState('INTRO'); clearKeys(); setStage(sceneIntro()); }
   function gotoTitle() { setState('TITLE'); clearKeys(); flashEl.style.opacity = 0; setStage(sceneTitle()); }
   function gotoHub(i) {
-    G.idx = i; setState('HUB'); const s = sceneHub(i, 'hub'); setStage(s); DW.hud.clear();
+    G.idx = i; saveProgress(); setState('HUB'); const s = sceneHub(i, 'hub'); setStage(s); DW.hud.clear();
     const m = meta(i); const hints = ['Tip: gebruik WASD of de pijltjestoetsen om te bewegen.', 'Win van de robot om verder te komen!', 'Elke overwinning brengt je dichter bij MEESTER ROBOT...', 'Blijf kalm en let goed op - dan win je!'];
     const dots = G.results.length >= 0 ? Array.from({ length: 9 }, (_, k) => `<button type="button" data-lv="${k}" title="Level ${k + 1}: ${meta(k).name}" class="${G.results[k] === 'won' ? 'w' : G.results[k] === 'lost' ? 'l' : ''} ${k === i ? 'c' : ''}">${k + 1}</button>`).join('') : '';
     const layer = ui('', `<div class="dwf-top"><div class="dwf-dots">${dots}</div></div><div class="dwf-bot"><div class="dw-card dwf-hubcard"><div class="dwf-lv">Level ${i + 1}: ${m.name}</div><p>${m.icon} ${m.desc}</p><div class="dwf-score">Gewonnen: <b>${G.won}</b> &nbsp;&nbsp; Verloren: <b>${G.lost}</b></div></div><div class="dwf-hint">${hints[i % hints.length]}</div></div>`);
@@ -961,7 +979,7 @@
   }
   function gotoBoss() { setState('BOSS_INTRO'); clearKeys(); G.idx = 8; setStage(sceneBoss()); DW.sfx.play('boom'); }
   function gotoVictory() { setState('VICTORY'); clearKeys(); setStage(sceneVictory()); }
-  function gotoMorning() { setState('MORNING'); clearKeys(); setStage(sceneMorning()); }
+  function gotoMorning() { clearProgress(); setState('MORNING'); clearKeys(); setStage(sceneMorning()); }
 
   // ---------------------------------------------------------------- LEVEL LIFECYCLE
   function startLevel(i) {
@@ -988,7 +1006,7 @@
     btn('OVERSLAAN', () => { G.results[i] = G.results[i] || 'lost'; nextAfter(i); }, row, false);
   }
   function finishLevel(won, i) {
-    G.results[i] = won ? 'won' : (G.results[i] === 'won' ? 'won' : 'lost'); G.won = G.results.filter((r) => r === 'won').length; G.lost = G.results.filter((r) => r === 'lost').length;
+    G.results[i] = won ? 'won' : (G.results[i] === 'won' ? 'won' : 'lost'); recount(); saveProgress();
     const boss = i === 8;
     transition(() => {
       const lv = level; level = null;
@@ -2110,6 +2128,7 @@
   const POS = [[-3.6, -1.6], [3.5, -2.0], [-0.3, -3.9], [-1.3, 3.6], [1.9, 3.4], [4.3, 2.0], [-3.6, 1.0], [2.4, 0.6], [-1.5, -1.4]];
   const ROT = [0.35, -0.25, 0, 0.1, -0.3, 0, 0.5, 0, 0.4];
   const POND = [-4.2, 3.2];
+  const MAX_CHECKS = 6; // de robot doorzoekt 6 van de 9 plekken
 
   function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   function add(parent, mesh, x, y, z) { mesh.position.set(x, y, z); parent.add(mesh); return mesh; }
@@ -2485,6 +2504,9 @@
       for (const S of this.spots) { S.k = 0; S.popT = 1; S.glowT = 0; S.open(0); S.group.scale.set(1, 1, 1); }
       const k = this.kid; k.visible = true; k.scale.setScalar(0.28); k.position.copy(PLAZA); k.rotation.y = 0; DW.setMood(k, 'idle'); this.kstate = 'idle';
       this.lblEmpty.visible = false; this.lblFound.visible = false;
+      if (!this.chk) this.chk = this.spots.map((S) => { const l = DW.makeLabel('✓', { size: 72, color: '#7dff9a', stroke: '#14502a', width: 0.7 }); l.position.set(S.pos.x, G + S.topY + 0.7, S.pos.z); this.scene.add(l); return l; });
+      for (const l of this.chk) l.visible = false;
+      this.searched = new Set(); this.maxChecks = MAX_CHECKS; this.relocRisk = 0;
       this.rmode = 'cover'; DW.setMood(this.robot, 'idle'); this.shock = 0;
       this.state = 'hide'; this.stT = 0; this.updateHud('Verstop je!'); DW.hud.hideBanner(); DW.hud.bottom(this.baseHint());
       this.barEl.style.display = 'block'; this.barI.style.width = '100%'; DW.sfx.play('go');
@@ -2492,15 +2514,21 @@
     },
     baseHint() {
       if (this.state === 'hide') return this.kidAt >= 0 || this.chosen >= 0 ? 'Ssst... je verstopt je in ' + this.spots[this.chosen].name + '! Klik/tik op een ander plekje om te wisselen, of druk op Klaar!' : 'Klik/tik op een plekje om je te verstoppen';
-      if (this.state === 'seek') return this.reloc < 1 ? 'De robot zoekt... Klik/tik op een ander plekje om te verhuizen (1x)' : 'De robot zoekt...';
+      if (this.state === 'seek') return this.reloc < 1 ? 'Tip: sluip naar een plek met een ✓ terwijl de robot ergens in kijkt! (1x)' : 'De robot zoekt...';
       return '';
     },
     setMsg(txt) { DW.hud.bottom(txt); this.msgT = 1.8; },
     removeKlaar() { if (this.klaarBtn) { this.klaarBtn.remove(); this.klaarBtn = null; } if (this.klaarWrap) this.klaarWrap.innerHTML = ''; },
     updateBadge() {
       const b = this.badgeEl; b.style.display = 'block';
-      if (this.reloc < 1) { b.textContent = 'Verhuizen: 1x mogelijk'; b.style.opacity = '1'; } else { b.textContent = 'Verhuisd!'; b.style.opacity = '0.55'; }
+      if (this.reloc >= 1) { b.textContent = 'Verhuisd!'; b.style.opacity = '0.55'; b.style.color = ''; return; }
+      b.style.opacity = '1';
+      if (this.state !== 'seek') { b.textContent = 'Verhuizen: 1x mogelijk'; b.style.color = ''; }
+      else if (this.peeking()) { b.textContent = 'NU sluipen! De robot kijkt'; b.style.color = '#7dff9a'; }
+      else { b.textContent = 'Wacht... de robot let op'; b.style.color = '#ffb35a'; }
     },
+    // de robot tuurt in een plek: dan hoort hij bijna niets
+    peeking() { const c = this.ck; return !!(c && c.opened && c.t < 1.35); },
     approachPt(i) { const S = this.spots[i], d = new THREE.Vector3().subVectors(S.pos, PLAZA).setY(0).normalize(); return new THREE.Vector3().copy(S.pos).addScaledVector(d, -S.r * 0.85); },
     setSeg(n) {
       const a = this.kpts[n], b = this.kpts[n + 1], dx = b.x - a.x, dz = b.z - a.z, dist = Math.hypot(dx, dz);
@@ -2537,19 +2565,17 @@
       for (const S of this.spots) S.glowT = 0;
       DW.hud.bottom('Ssst... je verstopt je in ' + this.spots[this.chosen].name + '!'); this.msgT = 0;
     },
-    buildOrder() {
-      const i = this.chosen, others = this.spots.map((s, j) => j).filter((j) => j !== i); DW.shuffle(others);
-      const w = [1, 1, 1, 1, 1, 8]; let r = Math.random() * 13, idx = 0; while (idx < 5 && r >= w[idx]) { r -= w[idx]; idx++; }
-      others.splice(3 + idx, 0, i); this.order = others;
-    },
+    // eerlijke, willekeurige zoekvolgorde; de robot doorzoekt er maar MAX_CHECKS
+    buildOrder() { this.order = DW.shuffle(this.spots.map((s, j) => j)); },
     tryRelocate(i) {
       if (this.state !== 'seek') return;
       if (this.reloc >= 1) { this.setMsg('Je hebt al verhuisd! Nog een keer mag niet.'); return; }
       if (this.kstate !== 'hidden' || this.kidAt < 0) { this.setMsg('Je bent al onderweg!'); return; }
       if (i === this.kidAt) { this.setMsg('Je zit al in ' + this.spots[i].name + '! Kies een ander plekje.'); return; }
       if (this.ck && this.ck.i === i) { this.setMsg('Niet daar! De robot is nu bij ' + this.spots[i].name + '!'); return; }
+      this.relocRisk = this.peeking() ? 0.15 : 0.7;
       this.reloc = 1; this.relocating = true; this.updateBadge(); DW.sfx.play('click');
-      this.sendKid(i, 9); this.setMsg('Ren! Je verhuist naar ' + this.spots[i].name + '...');
+      this.sendKid(i, 9); this.setMsg(this.relocRisk < 0.5 ? 'Goed getimed! Ssst... naar ' + this.spots[i].name + '...' : 'Ren! Je verhuist naar ' + this.spots[i].name + '... (de robot let op!)');
     },
     startCheck() {
       const i = this.order[this.ci], S = this.spots[i]; this.ck = { i, S, t: 0, opened: false, isKid: false };
@@ -2557,6 +2583,7 @@
     },
     seekStep(dt) {
       const c = this.ck, S = c.S; c.t += dt; const t = c.t;
+      if (this.reloc < 1) this.updateBadge();
       const hover = S.topY + 2.3, grab = S.topY + 1.35;
       let y = t < 0.45 ? hover : lerp(hover, grab, clamp((t - 0.45) / 0.25, 0, 1));
       let k = 0;
@@ -2574,8 +2601,8 @@
       }
       if (this.lblEmpty.visible) { this.lblEmpty.position.y += dt * 0.6; this.lblEmpty.material.opacity = clamp(1 - (t - 1.15) / 0.45, 0, 1); }
       if (!c.isKid && t > 1.65) {
-        this.lblEmpty.visible = false; this.ci++;
-        if (this.ci >= 8) { this.state = 'giveup'; this.stT = 0; this.rmode = 'idle'; DW.setMood(this.robot, 'sad'); } else this.startCheck();
+        this.lblEmpty.visible = false; this.searched.add(c.i); this.chk[c.i].visible = true; this.ci++;
+        if (this.ci >= this.maxChecks || this.ci >= this.order.length) { this.state = 'giveup'; this.stT = 0; this.rmode = 'idle'; DW.setMood(this.robot, 'sad'); } else this.startCheck();
       }
     },
     onFound(S) {
@@ -2595,6 +2622,7 @@
     },
     finish() {
       const won = this.youW > this.botW; this.state = 'final'; this.stT = 0; this.rmode = 'idle';
+      if (this.chk) for (const l of this.chk) l.visible = false;
       DW.hud.banner(won ? 'JE HEBT GEWONNEN!' : 'ROBOT WINT!', { color: won ? '#ffd700' : '#ff5a5a', sub: `Ronde-score: ${this.youW} - ${this.botW}`, ms: 0 });
       DW.sfx.play(won ? 'win' : 'lose'); DW.setMood(this.robot, won ? 'sad' : 'happy');
       const k = this.kid; k.visible = true; k.scale.setScalar(0.28); k.position.copy(PLAZA); k.rotation.y = 0; this.kstate = 'idle'; DW.setMood(k, won ? 'happy' : 'sad');
@@ -2656,7 +2684,7 @@
             if (this.relocating) {
               this.relocating = false;
               if (this.state === 'seek') {
-                if (Math.random() < 0.5) { this.order.splice(this.ci + 1, 0, this.kdest); this.noiseHit = true; this.setMsg('Oei! De robot hoorde een geluid...'); } else this.setMsg('Gelukt! Ssst...');
+                if (Math.random() < this.relocRisk) { const o = this.order, j = o.indexOf(this.kdest); if (j > this.ci) o.splice(j, 1); o.splice(this.ci + 1, 0, this.kdest); this.maxChecks = Math.max(this.maxChecks, this.ci + 2); this.noiseHit = true; this.setMsg('Oei! De robot hoorde een geluid...'); } else this.setMsg('Gelukt! Ssst...');
               }
             }
           } break; }
@@ -4580,6 +4608,8 @@
 
   const FIELD_X = 10.5, FIELD_Y = 4.9;      // ship movement limits
   const SPAWN_Z = -125, LASER_SPEED = 70, ROUND = 60;
+  const CRASH_PTS = 2, STUN = 1.2;                   // straf bij een botsing
+  const HINT = 'WASD/pijltjes = vliegen - SPATIE = schieten - ontwijk de asteroïden!';
   const ADD = THREE.AdditiveBlending;
 
   // ---------- small helpers ----------
@@ -4665,7 +4695,7 @@
       camera.position.set(0, 3, 9); camera.lookAt(0, 0.3, -20);
 
       api.hud.scoreboard('Ruimtegevecht - ' + ROUND + ' s', 0, 0);
-      api.hud.bottom('WASD/pijltjes = vliegen - SPATIE = schieten');
+      api.hud.bottom(HINT);
       this.start();
     },
 
@@ -4879,6 +4909,21 @@
     },
     removeAst(a) { this.scene.remove(a.m); const i = this.asts.indexOf(a); if (i >= 0) this.asts.splice(i, 1); if (a.glow) a.glow.material.dispose(); },
 
+    // botsing met een asteroïde: 2 punten kwijt en even niet schieten
+    crash(ship, owner) {
+      const lost = Math.min(CRASH_PTS, owner === 1 ? this.you : this.bot);
+      if (owner === 1) this.you -= lost; else this.bot -= lost;
+      ship.stun = STUN;
+      DW.hud.scoreboard('Ruimtegevecht - ' + Math.max(0, Math.ceil(this.timeLeft)) + ' s', this.you, this.bot);
+      if (owner === 1) { this.api.hud.bottom('<b style="color:#ff6a7a">AU! -' + CRASH_PTS + ' punten</b> - ontwijk de asteroïden!'); clearTimeout(this.hintT); this.hintT = setTimeout(() => { if (!this.dead && !this.ended) this.api.hud.bottom(HINT); }, 1800); }
+      this._lbl = this._lbl || {}; const key = 'crash' + owner;
+      if (!this._lbl[key]) this._lbl[key] = DW.makeLabel('-' + CRASH_PTS, { size: 72, color: '#ff5a6a', width: 1, stroke: '#150a30' });
+      const tpl = this._lbl[key];
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tpl.material.map, transparent: true, depthTest: false, fog: false })); sp.renderOrder = 10;
+      const w = 1.4; sp.userData.w = w; sp.userData.aspect = tpl.scale.y / tpl.scale.x; sp.scale.set(w, w * sp.userData.aspect, 1); sp.position.set(ship.x, ship.y + 1.2, -2);
+      this.scene.add(sp); this.labels.push({ sp, t: 0 });
+    },
+
     kill(a, owner) {
       const pts = a.gold ? 2 : 1;
       if (owner === 1) this.you += pts; else this.bot += pts;
@@ -4948,7 +4993,8 @@
       pl.vx = damp(pl.vx, ax.x * MAXV, 8, dt); pl.vy = damp(pl.vy, ax.y * MAXV * 0.85, 8, dt);
       pl.x = clamp(pl.x + pl.vx * dt, -FIELD_X, FIELD_X); pl.y = clamp(pl.y + pl.vy * dt, -FIELD_Y, FIELD_Y);
       pl.cd -= dt;
-      if (L.running && !L.ended && DW.input.keys.Space && pl.cd <= 0) { pl.cd = 0.22; L.fire(pl, 1); }
+      for (const s of [pl, rb]) if (s.stun > 0) s.stun = Math.max(0, s.stun - dt);
+      if (L.running && !L.ended && DW.input.keys.Space && pl.cd <= 0 && !(pl.stun > 0)) { pl.cd = 0.22; L.fire(pl, 1); }
 
       // ---------- robot AI ----------
       if (L.running && !L.ended) L.updateBot(dt);
@@ -5000,6 +5046,7 @@
             const d = Math.hypot(a.x - s.x, a.y - s.y);
             if (d < a.r + 0.95) {
               if (s === pl) { L.shaker.add(0.75); L.red.style.opacity = '1'; setTimeout(() => { if (L.red) L.red.style.opacity = '0'; }, 120); DW.sfx.play('hit'); }
+              if (L.running && !L.ended) L.crash(s, s === pl ? 1 : 2);
               L.fx.emit(a.m.position, { color: 0xffaa66, count: 26, speed: 7, life: 0.7, gravity: 0 });
               a.hit = true; L.boomSilent(a); L.removeAst(a); break;
             } else if (d < a.r + 3.2 && s === pl && L.whooshCd <= 0) { DW.sfx.play('whoosh'); L.whooshCd = 0.25; L.shaker.add(0.06); }
@@ -5046,6 +5093,7 @@
       s.roll = damp(s.roll, bank, 9, dt); s.pitch = damp(s.pitch, pitch, 9, dt);
       const bob = Math.sin(t * 2 + s.phase) * 0.12;
       s.root.position.set(s.x, s.y + bob, s.kick * 0.15);
+      s.root.visible = !(s.stun > 0 && Math.floor(s.stun * 12) % 2 === 1); // knipperen na een botsing
       s.body.rotation.z = s.roll + (s.spin2 || 0); s.body.rotation.x = s.pitch; s.body.rotation.y = -s.roll * 0.15;
       const fl = 0.85 + Math.sin(t * 40 + s.phase) * 0.15 + Math.abs(s.vx) * 0.005;
       for (const g of s.engGlow) { g.scale.set(1, fl * 1.25, 1); g.material.opacity = 0.65 + 0.2 * Math.sin(t * 50); }
@@ -5076,14 +5124,29 @@
       const a = ai.target; let tx, ty;
       if (a && ai.pause <= 0) { tx = a.x + ai.ex; ty = a.y + ai.ey; }
       else { ai.wander += dt; tx = 4 + Math.sin(ai.wander * 0.5) * 4; ty = Math.sin(ai.wander * 0.37) * 2.5; }
-      const sp = 6.8;
+      // ontwijken: de robot ziet ongeveer 3 van de 4 dreigende asteroïden op tijd
+      let threat = null, td = 1e9;
+      for (const o of L.asts) {
+        if (o.hit || o.fade || o.passed || o.z < -38 || o.z > -1.6) continue;
+        const d = Math.hypot(o.x - rb.x, o.y - rb.y); if (d > o.r + 1.6) continue;
+        if (o.botSees === undefined) o.botSees = Math.random() < 0.75;
+        if (o.botSees && d < td) { td = d; threat = o; }
+      }
+      let sp = 6.8;
+      if (threat) {
+        let dx = rb.x - threat.x, dy = rb.y - threat.y; const dl = Math.hypot(dx, dy);
+        if (dl < 0.05) { dx = rb.x > 0 ? -1 : 1; dy = 0; } else { dx /= dl; dy /= dl; }
+        const need = threat.r + 2.2; tx = threat.x + dx * need; ty = threat.y + dy * need;
+        if (Math.abs(tx) > FIELD_X) tx = threat.x - dx * need; if (Math.abs(ty) > FIELD_Y) ty = threat.y - dy * need;
+        sp = 9;
+      }
       rb.vx = damp(rb.vx, clamp((tx - rb.x) * 3.2, -sp, sp), 6, dt); rb.vy = damp(rb.vy, clamp((ty - rb.y) * 3.2, -sp, sp), 6, dt);
       rb.cd -= dt;
       if (rb.cd <= 0 && ai.pause <= 0) {
         let go = false;
         if (a && a.z > -92 && Math.abs(rb.x - a.x) < a.r * 0.8 && Math.abs(rb.y - a.y) < a.r * 0.8) go = true;
         else if (Math.random() < 0.012) go = true; // wasted shots
-        if (go) { rb.cd = 0.4 + rand(0, 0.18); this.fire(rb, 2); }
+        if (go && !(rb.stun > 0)) { rb.cd = 0.4 + rand(0, 0.18); this.fire(rb, 2); }
       }
     },
 

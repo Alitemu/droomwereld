@@ -85,7 +85,9 @@ Elk level is een object dat zich registreert met `DW.registerLevel(n, level)`:
 ### Voortgang
 
 * Geen levens en geen puntentotaal. Per level wordt `won` of `lost` bijgehouden; een gewonnen level blijft gewonnen.
-* Voortgang wordt niet opgeslagen. Herladen = opnieuw beginnen.
+* Voortgang (`idx` en `results`) wordt bewaard in `localStorage` onder `droomwereld-voortgang-v1`, bij elke levelkaart en elk resultaat. Alle toegang zit in try/catch: werkt opslag niet, dan speelt het spel gewoon zonder.
+* Titelscherm met bewaarde voortgang: **VERDER SPELEN (LEVEL n)** en **NIEUW SPEL**. Zonder: **BEGIN DE DROOM!**
+* NIEUW SPEL, OPNIEUW SPELEN en de ochtendscène wissen de bewaarde voortgang.
 * Bij een gelijkspel wint altijd de robot.
 
 ---
@@ -120,8 +122,10 @@ Elk level is een object dat zich registreert met `DW.registerLevel(n, level)`:
 ### Level 3: Verstoppertje
 * Diorama met 9 plekken: het rode huisje, de schuur, de grote boom, de tent, de houten kist, het vat, de tunnel, de hooiberg, het hondenhok.
 * Per ronde: 6 s om een plek te kiezen (of **Klaar!**). Geen keuze = willekeurige plek.
-* Zoeken: de robot doorzoekt 8 van de 9 plekken in willekeurige volgorde. De plek van de speler staat op positie 4 t/m 9 in die volgorde; positie 9 (nooit doorzocht) heeft 8/13 kans. De speler wint een ronde dus in ongeveer 62% van de gevallen.
-* Verhuizen: tijdens het zoeken één keer naar een andere plek (niet de plek die de robot net doorzoekt). 50% kans dat de robot het hoort en de nieuwe plek als volgende doorzoekt.
+* Zoeken: de robot doorzoekt `MAX_CHECKS` = 6 van de 9 plekken in een eerlijke, willekeurige volgorde. Doorzochte plekken krijgen een groen ✓.
+* Verhuizen: tijdens het zoeken één keer naar een andere plek (niet de plek die de robot net doorzoekt). Het risico wordt bepaald op het moment van klikken: kijkt de robot op dat moment in een plek (deksel open, `peeking()`), dan 15% kans dat hij het hoort; anders 70%. Hoort hij het, dan doorzoekt hij de nieuwe plek als volgende (ook als die al een ✓ had) en krijgt hij daar een extra zoekbeurt voor.
+* Het badge rechtsboven toont live "NU sluipen!" (groen) of "Wacht... de robot let op" (oranje).
+* Kansen per ronde: blijven zitten 3/9 ≈ 33%; goed getimed naar een ✓ sluipen ≈ 8/9 × 85% ≈ 76%. Het level beloont dus opletten en timing, niet geluk.
 * Best of 3.
 
 ### Level 4: Voetbal
@@ -152,9 +156,9 @@ Elk level is een object dat zich registreert met `DW.registerLevel(n, level)`:
 ### Level 8: Ruimtegevecht
 * Twee schepen naast elkaar, asteroïden komen van ver weg op je af. Ronde van 60 s.
 * Soorten: gewoon (1 punt), ijs (1 punt), goud (10% kans, 2 punten). Grote asteroïden hebben 2 treffers nodig.
-* Asteroïden komen steeds sneller en vaker naarmate de tijd verstrijkt. Een botsing met je schip geeft alleen schudden en een rode flits, geen strafpunten.
+* Asteroïden komen steeds sneller en vaker naarmate de tijd verstrijkt. Een botsing kost `CRASH_PTS` = 2 punten (nooit onder 0) en `STUN` = 1,2 s niet schieten; het schip knippert en er verschijnt "-2". Dit geldt voor speler en robot.
 * Vuursnelheid speler: één schot per 0,22 s. De schepen duwen elkaar weg als ze te dicht bij elkaar komen.
-* Robot-AI: kiest een doelwit, richt met een willekeurige afwijking en schiet af en toe mis.
+* Robot-AI: kiest een doelwit, richt met een willekeurige afwijking en schiet af en toe mis. Ontwijken: per asteroïde beslist de robot één keer of hij hem ziet (75%); een geziene asteroïde binnen ±38 eenheden die op koers ligt, ontwijkt hij met hogere snelheid.
 
 ---
 
