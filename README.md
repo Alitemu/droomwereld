@@ -67,8 +67,8 @@ De game wordt gebouwd met behulp van gespecialiseerde subagents:
 
 ## Technische Stack
 
-- **Frontend:** HTML5 Canvas + JavaScript
-- **Stijl:** CSS3 (droomachtige animaties, neon-kleuren)
+- **Frontend:** Three.js (3D) + JavaScript, gebundeld in één bestand (`index.html`)
+- **Stijl:** droomachtige 3D-scènes, neon-kleuren
 - **AI robots:** Regelgebaseerde logica per level, oplopende moeilijkheidsgraad
 - **Structuur:** Modulair — elk level is een losstaande module, samengebracht door `agent-merge`
 
@@ -76,7 +76,7 @@ De game wordt gebouwd met behulp van gespecialiseerde subagents:
 
 ## Hoe te spelen
 
-1. Start het spel (`game.html` openen in de browser)
+1. Start het spel (`index.html` openen in de browser)
 2. Klik op "Ga Slapen" om de droomwereld te betreden
 3. Doorloop alle 8 levels
 4. Versla de Droomkoning
