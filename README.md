@@ -2,7 +2,7 @@
 
 ## Concept
 
-Een kind valt in slaap en wordt door een portaal boven het bed de droomwereld in gezogen. Daar heerst **MEESTER ROBOT**. Hij daagt je uit voor 8 spelletjes tegen zijn robothelper. Daarna volgt de eindstrijd tegen MEESTER ROBOT zelf. Versla hem en je wordt 's ochtends wakker in je eigen slaapkamer.
+Een kind valt in slaap en wordt door een portaal boven het bed de droomwereld in gezogen. Daar heerst **MEESTER ROBOT**. Hij daagt je uit voor 9 spelletjes tegen zijn robothelper. Daarna volgt de eindstrijd tegen MEESTER ROBOT zelf. Versla hem en je wordt 's ochtends wakker in je eigen slaapkamer.
 
 Het hele spel is 3D (Three.js) en draait volledig in de browser vanuit één bestand: `index.html`.
 
@@ -12,12 +12,12 @@ Het hele spel is 3D (Three.js) en draait volledig in de browser vanuit één bes
 
 1. **Intro:** slaapkamer bij nacht, het portaal opent. Klik of druk op een toets om over te slaan.
 2. **Titelscherm:** knop **BEGIN DE DROOM!**
-3. **Levelkaart:** toont het huidige level met naam en uitleg, plus bolletjes 1 t/m 9 waarmee je naar elk level kunt springen. Knop **START!**
+3. **Levelkaart:** toont het huidige level met naam en uitleg, plus bolletjes 1 t/m 10 waarmee je naar elk level kunt springen. Knop **START!**
 4. **Level spelen:** elk level start met een aftelling. Met de ✕ knop of **Escape** kun je stoppen; het level telt dan niet mee.
 5. **Resultaat:**
    * Gewonnen: **VOLGENDE UITDAGING**
    * Verloren: **OPNIEUW PROBEREN** of **OVERSLAAN** (overslaan kan niet bij de eindbaas)
-6. Na level 8 volgt een intro van de eindbaas, daarna level 9.
+6. Na level 9 volgt een intro van de eindbaas, daarna level 10.
 7. **Overwinning:** vuurwerk, daarna de ochtendscène: *"Het was allemaal een droom... maar jij WON!"* met knop **OPNIEUW SPELEN**.
 
 Er zijn geen levens. Het spel houdt alleen bij hoeveel levels je gewonnen en verloren hebt. Een level dat je ooit gewonnen hebt, blijft gewonnen.
@@ -87,6 +87,14 @@ Twee ruimteschepen naast elkaar schieten 60 seconden lang op aanstormende astero
 * **Winnen:** meer punten dan de robot.
 * **Besturing:** WASD of pijltjes om te vliegen, SPATIE om te schieten (touch: joystick + VUUR).
 
+### Level 9: Treinrennen 🚂
+Een endless runner zoals Subway Surfers, op zwevende droomrails met 3 banen. Jij rent vooruit, de robot zit je op de hielen.
+* Ontwijk hekken en treinen. **Lage hekken** (rood-wit): springen. **Hoge balken** (geel-paars): rollen. **Treinen**: wissel van baan, of ren via een **helling** omhoog en loop over de daken.
+* Struikel je, dan komt de robot dichterbij (meter rechtsboven). Hij zakt langzaam weer terug. **Struikel je twee keer snel achter elkaar, dan pakt hij je.** Frontaal tegen een trein is extra gevaarlijk.
+* Pak onderweg zoveel mogelijk ⭐ sterren. Het tempo gaat omhoog naarmate je verder komt.
+* **Winnen:** de finish op 900 meter halen zonder gepakt te worden.
+* **Besturing:** ←/→ of A/D = van baan wisselen, ↑, W of SPATIE = springen, ↓ of S = rollen (in de lucht: snel naar beneden). Touch: vegen in die richting, tikken = springen.
+
 ---
 
 ## Eindbaas: MEESTER ROBOT 👑
@@ -104,7 +112,7 @@ Een gevecht in drie fases in een donkere arena. Faal je in een fase, dan begin j
 * **Eén bestand:** `index.html` bevat Three.js r147 en alle spelcode als losse `<script>` blokken.
 * **`engine.js`:** gedeelde 3D hulpfuncties onder `window.DW`: vormen en materialen, personages (`makeCharacter`, `setMood`), droomomgeving, deeltjes, HUD, geluid (Web Audio, geen geluidsbestanden) en invoer. Hier staan ook de levelnamen (`DW.meta`).
 * **`framework.js`:** renderer, game loop, schermen (intro, titel, levelkaart, resultaat, eindbaas, overwinning, ochtend), voortgang, stopknop, geluidsknop en touch-besturing.
-* **`level1.js` t/m `level9.js`:** elk level registreert zich met `DW.registerLevel(n, level)`.
+* **`level1.js` t/m `level10.js`:** elk level registreert zich met `DW.registerLevel(n, level)`. Level 10 is de eindbaas. Het aantal levels staat in `framework.js` als `NUM`; de eindbaas is altijd `BOSS = NUM - 1` (0-based).
 
 Werkt met toetsenbord en muis én op touchscreens (virtuele joystick en actieknoppen). Touch forceren of uitzetten kan met `?touch=1` of `?touch=0` achter de URL.
 
