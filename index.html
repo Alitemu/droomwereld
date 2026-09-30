@@ -15,7 +15,7 @@
   const DW = (window.DW = { THREE, levels: [], meta: [] });
 
   // ---------- registry ----------
-  // Each level file calls DW.registerLevel(n, {...}) with n = 1..11 (11 = eindbaas)
+  // Each level file calls DW.registerLevel(n, {...}) with n = 1..12 (12 = eindbaas)
   DW.registerLevel = (n, lvl) => { DW.levels[n - 1] = lvl; };
 
   // ---------- math ----------
@@ -339,6 +339,7 @@
     { name: 'Ruimtegevecht', desc: 'Schiet meer asteroïden dan de robot!', icon: '🚀' },
     { name: 'Treinrennen', desc: 'Ren over de rails en laat je niet pakken door de robot!', icon: '🚂' },
     { name: 'Boogschieten', desc: 'Schiet je pijlen in de roos! Let op de wind!', icon: '🏹' },
+    { name: 'Robotsprong', desc: 'Spring op de robots en haal de finishvlag!', icon: '🧱' },
     { name: 'MEESTER ROBOT', desc: 'De ultieme confrontatie!', icon: '👑' },
   ];
 })();
@@ -346,7 +347,7 @@
 </script>
 <script>/* src/framework.js */
 // framework.js - game shell for DE DROOM WERELD: renderer, loop, input, screens, progression.
-// Script order: three.min.js, engine.js, framework.js (any position relative to level1..11; boot is deferred until window load).
+// Script order: three.min.js, engine.js, framework.js (any position relative to level1..12; boot is deferred until window load).
 (function () {
   'use strict';
   const THREE = window.THREE, DW = window.DW;
@@ -456,10 +457,10 @@
   function later(fn, ms) { const id = setTimeout(fn, ms); extraTimers.push(id); return id; }
   function clearTimers() { extraTimers.forEach(clearTimeout); extraTimers = []; }
   function clearKeys() { for (const k in DW.input.keys) delete DW.input.keys[k]; DW.input.pointer.down = false; touchReset(); }
-  const NUM = 11, BOSS = NUM - 1; // aantal levels; de eindbaas is altijd het laatste
+  const NUM = 12, BOSS = NUM - 1; // aantal levels; de eindbaas is altijd het laatste
   const meta = (i) => DW.meta[i] || { name: 'Level ' + (i + 1), desc: '', icon: '?' };
   // ---- voortgang bewaren in de browser (mag stil mislukken, bv. in een privévenster)
-  const SAVE_KEY = 'droomwereld-voortgang-v3';
+  const SAVE_KEY = 'droomwereld-voortgang-v4';
   function recount() { G.won = G.results.filter((r) => r === 'won').length; G.lost = G.results.filter((r) => r === 'lost').length; }
   function saveProgress() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ idx: G.idx, results: G.results })); } catch (e) { } }
   function clearProgress() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } }
@@ -746,7 +747,7 @@
   }
 
   // ---------------------------------------------------------------- SCENE: HUB (level map) + RESULT overlay
-  const PAL = [[0xff9ecb, 0x8a5a9a], [0x7ddc6a, 0x8a6a4a], [0xffd166, 0x9a6a4a], [0x3fbf5f, 0x5a6a4a], [0x6ee7d6, 0x4a7a8a], [0xb18cff, 0x5a4a9a], [0xff8fa3, 0x9a4a6a], [0x4d6bff, 0x3a4a9a], [0xffb35a, 0x8a5a3a], [0x9fe89a, 0x6a5a3a], [0x3a2038, 0x2a1a2a]];
+  const PAL = [[0xff9ecb, 0x8a5a9a], [0x7ddc6a, 0x8a6a4a], [0xffd166, 0x9a6a4a], [0x3fbf5f, 0x5a6a4a], [0x6ee7d6, 0x4a7a8a], [0xb18cff, 0x5a4a9a], [0xff8fa3, 0x9a4a6a], [0x4d6bff, 0x3a4a9a], [0xffb35a, 0x8a5a3a], [0x9fe89a, 0x6a5a3a], [0x7ab8ff, 0x6a4a3a], [0x3a2038, 0x2a1a2a]];
   function hubPos(i) { return new V3(Math.sin(i * 1.05) * 7.5, i * 1.1, -i * 5.6); }
   function addProps(i, g, M) {
     const P = new THREE.Group(); P.position.set(-0.3, 0, -0.7); g.add(P);
@@ -762,6 +763,7 @@
       case 7: add(DW.capsule(0.36, 0.8, M(0xf5f5ff, { metalness: 0.3 })), 0, 1.0, 0); add(DW.cone(0.36, 0.6, M(0xff4d6d)), 0, 1.85, 0); for (let k = 0; k < 3; k++) { const a = k * 2.09; const fin = DW.box(0.06, 0.5, 0.35, M(0xff4d6d)); add(fin, Math.cos(a) * 0.4, 0.45, Math.sin(a) * 0.4).rotation.y = -a; } add(DW.sphere(0.13, M(0x4dd0ff, { emissive: 0x4dd0ff, emissiveIntensity: 0.9 })), 0, 1.15, 0.34); add(DW.cone(0.22, 0.5, new THREE.MeshBasicMaterial({ color: 0xffa040 })), 0, 0.2, 0).rotation.x = Math.PI; break;
       case 8: { add(DW.box(2.0, 0.08, 0.12, M(0xc0c6d8, { metalness: 0.7 })), 0, 0.06, -0.35); add(DW.box(2.0, 0.08, 0.12, M(0xc0c6d8, { metalness: 0.7 })), 0, 0.06, 0.35); for (let k = 0; k < 5; k++) add(DW.box(0.14, 0.06, 1.0, M(0x7a4a2a)), -0.8 + k * 0.4, 0.02, 0); add(DW.roundedBox(1.5, 0.8, 0.75, 0.12, M(0xff6a4a)), -0.1, 0.52, 0); add(DW.box(1.2, 0.18, 0.78, M(0xffe36e, { emissive: 0xffc830, emissiveIntensity: 0.5 })), -0.1, 0.62, 0); break; }
       case 9: { const tg = DW.cyl(0.62, 0.62, 0.12, M(0xffffff)); tg.rotation.x = Math.PI / 2; add(tg, 0, 0.95, 0); [[0.5, 0x222244], [0.36, 0x2f8cff], [0.22, 0xff3b4e], [0.1, 0xffd21f]].forEach(([r, c], k) => { const d = DW.cyl(r, r, 0.02, M(c)); d.rotation.x = Math.PI / 2; add(d, 0, 0.95, 0.07 + k * 0.005); }); for (const s of [-1, 1]) add(DW.box(0.08, 0.95, 0.08, M(0x8a5a3a)), s * 0.4, 0.45, -0.15); const ar = DW.cyl(0.02, 0.02, 0.8, M(0xf0d8a0)); ar.rotation.x = Math.PI / 2; add(ar, 0.12, 1.02, 0.45); break; }
+      case 10: { for (const [x, y] of [[-0.55, 1.5], [0.55, 1.5]]) add(DW.box(0.55, 0.55, 0.55, M(0xc8643a)), x, y, 0); add(DW.box(0.55, 0.55, 0.55, M(0xffd23c, { emissive: 0xffa800, emissiveIntensity: 0.4 })), 0, 1.5, 0); const rb = DW.makeCharacter({ kind: 'robot', color: 0xff6a4a, scale: 0.45 }); rb.position.set(0.6, 0, 0.3); P.add(rb); const pp = DW.cyl(0.35, 0.35, 0.7, M(0x5ae6c8)); add(pp, -0.7, 0.35, 0.2); break; }
       case BOSS: { P.scale.setScalar(1.35); add(DW.box(1.7, 1.5, 1.3, M(0x2a2238)), 0, 0.75, 0); for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add(DW.cyl(0.34, 0.38, 2.1, M(0x342a48)), sx * 0.95, 1.05, sz * 0.7); add(DW.cone(0.5, 0.8, M(0x9a1030, { emissive: 0x400010, emissiveIntensity: 0.6 })), sx * 0.95, 2.5, sz * 0.7); } add(DW.box(0.4, 0.7, 0.06, M(0xff2a3a, { emissive: 0xff2a3a, emissiveIntensity: 1 })), 0, 0.35, 0.68); add(DW.box(0.2, 0.3, 0.06, M(0xff2a3a, { emissive: 0xff2a3a, emissiveIntensity: 1 })), 0.5, 1.1, 0.68); add(DW.box(0.2, 0.3, 0.06, M(0xff2a3a, { emissive: 0xff2a3a, emissiveIntensity: 1 })), -0.5, 1.1, 0.68); const cr = new THREE.Group(); const gm = M(0xffd54a, { metalness: 0.8, roughness: 0.25, emissive: 0xff9a00, emissiveIntensity: 0.7 }); cr.add(DW.cyl(0.4, 0.42, 0.2, gm)); for (let k = 0; k < 5; k++) { const a = k / 5 * 6.283; const sp = DW.cone(0.1, 0.35, gm); sp.position.set(Math.cos(a) * 0.34, 0.27, Math.sin(a) * 0.34); cr.add(sp); } cr.position.y = 3.6; P.add(cr); P.userData.crown = cr; break; }
     }
   }
@@ -1055,8 +1057,8 @@
   const touchParam = new URLSearchParams(location.search).get('touch');
   const isTouch = touchParam === '1' ? true : touchParam === '0' ? false :
     !!((window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window || navigator.maxTouchPoints > 0);
-  const JOY_LEVELS = [1, 3, 4, 7, BOSS];         // 0-based: level 2,4,5,8 en de eindbaas
-  const ACT_LEVELS = { 3: 'SCHIET', 7: 'VUUR' };
+  const JOY_LEVELS = [1, 3, 4, 7, 10, BOSS];     // 0-based: level 2,4,5,8,11 en de eindbaas
+  const ACT_LEVELS = { 3: 'SCHIET', 7: 'VUUR', 10: 'SPRING' };
   const DIRS = [['KeyD', 'ArrowRight'], ['KeyW', 'ArrowUp'], ['KeyA', 'ArrowLeft'], ['KeyS', 'ArrowDown']];
   let tEl = null, joyBase = null, joyKnob = null, ghost = null, actBtn = null, actLabel = null;
   let joyId = null, joyOx = 0, joyOy = 0, joyR = 60, joyDirs = [false, false, false, false], actId = null, tKey = '';
@@ -5796,7 +5798,377 @@
 
 </script>
 <script>/* src/level11.js */
-// level11.js - FINAL BOSS: MEESTER ROBOT (3 fases: ontwijken, steen-papier-schaar, rekenrace)
+// level11.js - ROBOTSPRONG: 2.5D platformspel. Spring op robots, pak sterren, haal de finishvlag.
+(function () {
+  const THREE = window.THREE, DW = window.DW;
+  const { clamp, damp, rand } = DW;
+  const GRAV = 42, JUMP_V = 16.5, RUN = 7.2, ACC = 38, AIR_ACC = 26, MAX_FALL = 24;
+  const KW = 0.3, KH = 1.35;                 // halve breedte en hoogte van het kind
+  const LIVES = 3, TIME = 240, INV_T = 1.6;
+  const WALK_V = 1.8, SHELL_V = 11;
+
+  // ---------------------------------------------------------------- het parcours
+  // tegel (i, j) beslaat [i, i+1] x [j, j+1]; de grond ligt onder y = 0
+  function buildMap() {
+    const T = new Map(), ents = [], stars = [];
+    const set = (i, j, c) => T.set(i + ',' + j, c);
+    const ground = (a, b) => { for (let i = a; i <= b; i++) { set(i, -1, 'G'); set(i, -2, 'D'); set(i, -3, 'D'); } };
+    const row = (x, y, s) => { for (let k = 0; k < s.length; k++) if (s[k] !== ' ') set(x + k, y, s[k]); };
+    const pipe = (x, h) => { for (let j = 0; j < h; j++) { set(x, j, 'P'); set(x + 1, j, 'P'); } ents.push({ t: 'pipe', x, h }); };
+    const stairs = (x, n, up) => { for (let k = 0; k < n; k++) { const h = up ? k + 1 : n - k; for (let j = 0; j < h; j++) set(x + k, j, 'S'); } };
+    const starRow = (x, y, n) => { for (let k = 0; k < n; k++) stars.push([x + k + 0.5, y + 0.5]); };
+    const en = (t, x, y = 0) => ents.push({ t, x: x + 0.5, y });
+
+    ground(-6, 44); ground(48, 90); ground(95, 130); ground(134, 175);
+    // start
+    starRow(8, 3, 4); row(13, 3, '?'); en('walk', 18);
+    pipe(21, 2);
+    row(26, 3, 'B?BMB'); row(28, 7, '?'); en('walk', 31); en('walk', 34);
+    pipe(37, 3);
+    // eerste kuil (niet vlak achter een buis: dan land je er blind in)
+    starRow(45, 4, 3);
+    row(49, 4, 'BBBBBBB'); starRow(50, 6, 5); en('shell', 53); en('walk', 58);
+    pipe(62, 4);
+    ents.push({ t: 'check', x: 67.5 });
+    // trap over een kuil (let op: de grond loopt door tot 90, de kuil zit in de trap)
+    stairs(72, 4, true); for (let i = 76; i <= 78; i++) { T.delete(i + ',-1'); T.delete(i + ',-2'); T.delete(i + ',-3'); } stairs(79, 4, false);
+    starRow(76, 6, 3);
+    en('walk', 85); row(84, 4, '?B?');
+    // zweefbots boven een kuil
+    // (geen blokken boven de rand van een kuil: dan stoot je je hoofd en val je erin)
+    row(92, 3, 'BB'); starRow(92, 5, 2); en('drone', 93, 8); row(98, 5, 'B?B');
+    en('drone', 101, 4);
+    // robotgang tussen twee buizen: gebruik een schildbot als bowlingbal
+    pipe(104, 2);
+    en('shell', 108); en('walk', 111); en('walk', 113); en('walk', 115); en('shell', 117);
+    pipe(120, 2);
+    row(123, 4, 'B?M?B'); starRow(123, 7, 5); en('walk', 126);
+    starRow(131, 3, 3); en('drone', 132, 6);
+    // eindtrap en vlag
+    stairs(140, 8, true); for (let j = 0; j < 8; j++) set(148, j, 'S');
+    starRow(150, 2, 3);
+    ents.push({ t: 'flag', x: 157.5 });
+    return { T, ents, stars, W: 176 };
+  }
+
+  const SOLID = { G: 1, D: 1, B: 1, '?': 1, M: 1, U: 1, S: 1, P: 1 };
+
+  const level = {
+    init(api) {
+      this.api = api; this.dead = false; this.running = false; this.over = false; this.t = 0;
+      const scene = (this.scene = new THREE.Scene());
+      this.camera = new THREE.PerspectiveCamera(42, api.aspect(), 0.1, 400);
+      this.env = DW.dreamEnvironment(scene, { top: '#2a4ab8', mid: '#7aa8ff', bottom: '#ffe0f0', fog: 0xb8c8ff, fogNear: 70, fogFar: 170, orbs: 0, moon: false });
+      this.sun = DW.addLights(scene, { range: 18, intensity: 1.1, sunColor: 0xfff4e0, sunPos: [6, 14, 10] });
+      this.fx = new DW.Particles(scene, 600); this.shaker = new DW.Shaker();
+      const M = (this.map = buildMap());
+      this.T = M.T; this.blockMesh = new Map(); this.bumps = [];
+      this.buildTextures(); this.buildTiles(); this.buildDecor();
+      this.kid = DW.makeCharacter({ kind: 'kid', color: 0xff8844, scale: 0.75 }); scene.add(this.kid);
+      this.shieldFx = new THREE.Mesh(new THREE.SphereGeometry(0.95, 20, 14), new THREE.MeshBasicMaterial({ color: 0x7af0ff, transparent: true, opacity: 0.22, depthWrite: false })); this.shieldFx.visible = false; scene.add(this.shieldFx);
+      this.enemies = []; this.items = []; this.starObjs = [];
+      for (const e of M.ents) this.spawnEnt(e);
+      for (const [x, y] of M.stars) this.addStar(x, y);
+      this.spawn = { x: 2.5, y: 0 }; this.lives = LIVES; this.shield = false; this.stars = 0; this.kills = 0; this.timeLeft = TIME;
+      this.respawn(true);
+      DW.hud.bottom(DW.game && DW.game.touch ? 'Joystick = lopen · SPRING-knop = springen · spring bovenop de robots!' : '←/→ of A/D = lopen · SPATIE, ↑ of W = springen (langer vasthouden = hoger) · spring bovenop de robots!');
+      this.drawTop(); this.updateCamera(1, true);
+      (async () => { await DW.hud.countdown(); if (this.dead) return; this.running = true; })();
+    },
+
+    // ---------------------------------------------------------------- bouwen
+    buildTextures() {
+      const tx = (w, h, f) => { const t = DW.canvasTexture(w, h, f).texture; t.encoding = THREE.sRGBEncoding; return t; };
+      this.tex = {
+        brick: tx(64, 64, (x, w, h) => { x.fillStyle = '#c8643a'; x.fillRect(0, 0, w, h); x.fillStyle = '#7a3418'; for (let r = 0; r < 4; r++) { x.fillRect(0, r * 16, w, 2); const o = r % 2 ? 16 : 0; for (let c = 0; c < 3; c++) x.fillRect(o + c * 32, r * 16, 2, 16); } x.fillStyle = 'rgba(255,220,180,.25)'; for (let r = 0; r < 4; r++) x.fillRect(0, r * 16 + 2, w, 2); }),
+        star: tx(64, 64, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#ffe36e'); g.addColorStop(1, '#f0a020'); x.fillStyle = g; x.fillRect(0, 0, w, h); x.strokeStyle = '#a86400'; x.lineWidth = 4; x.strokeRect(2, 2, w - 4, h - 4); x.fillStyle = '#fff'; x.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 9 : 21; x.lineTo(32 + Math.cos(a) * r, 33 + Math.sin(a) * r); } x.fill(); x.strokeStyle = '#a86400'; x.lineWidth = 2; x.stroke(); }),
+        used: tx(64, 64, (x, w, h) => { x.fillStyle = '#8a6a5a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#4a3428'; x.lineWidth = 4; x.strokeRect(2, 2, w - 4, h - 4); x.fillStyle = '#4a3428'; for (const [a, b] of [[10, 10], [54, 10], [10, 54], [54, 54]]) { x.beginPath(); x.arc(a, b, 3, 0, 7); x.fill(); } }),
+        stone: tx(64, 64, (x, w, h) => { x.fillStyle = '#9a8ac8'; x.fillRect(0, 0, w, h); x.fillStyle = '#6a5aa0'; x.fillRect(0, 60, w, 4); x.fillRect(60, 0, 4, h); x.fillStyle = '#c8b8f0'; x.fillRect(0, 0, w, 4); x.fillRect(0, 0, 4, h); }),
+        dirt: tx(64, 64, (x, w, h) => { x.fillStyle = '#b07a4a'; x.fillRect(0, 0, w, h); for (let i = 0; i < 40; i++) { x.fillStyle = Math.random() < 0.5 ? '#8a5a32' : '#c89060'; x.fillRect(Math.random() * w, Math.random() * h, 5, 4); } }),
+      };
+    },
+    buildTiles() {
+      const sc = this.scene, geo = new THREE.BoxGeometry(1, 1, 1.4), m4 = new THREE.Matrix4();
+      const groups = { G: [], D: [], S: [] };
+      for (const [k, c] of this.T) { const [i, j] = k.split(',').map(Number); if (groups[c]) groups[c].push([i, j]); else if (c !== 'P') this.makeBlock(i, j, c); }
+      const inst = (list, mat, sy = 1, dy = 0, geoOverride) => {
+        const im = new THREE.InstancedMesh(geoOverride || geo, mat, list.length); list.forEach(([i, j], n) => { m4.makeScale(1, sy, 1); m4.setPosition(i + 0.5, j + 0.5 + dy, 0); im.setMatrixAt(n, m4); });
+        im.castShadow = true; im.receiveShadow = true; sc.add(im); return im;
+      };
+      inst(groups.D.concat(groups.G), DW.mat(0xffffff, { map: this.tex.dirt, roughness: 0.9 }));
+      inst(groups.G, DW.mat(0x5fd86a, { roughness: 0.8 }), 1, 0.45, new THREE.BoxGeometry(1.02, 0.14, 1.5));
+      inst(groups.S, DW.mat(0xffffff, { map: this.tex.stone, roughness: 0.7 }));
+      // buizen
+      for (const e of this.map.ents) if (e.t === 'pipe') {
+        const m = DW.mat(0x5ae6c8, { roughness: 0.35, metalness: 0.2 }), rim = DW.mat(0x3ac0a8, { roughness: 0.35, metalness: 0.2 });
+        const body = DW.cyl(0.85, 0.85, e.h - 0.35, m); body.position.set(e.x + 1, (e.h - 0.35) / 2, 0); sc.add(body);
+        const top = DW.cyl(1.0, 1.0, 0.4, rim); top.position.set(e.x + 1, e.h - 0.2, 0); sc.add(top);
+      }
+    },
+    makeBlock(i, j, c) {
+      const map = c === 'B' ? this.tex.brick : c === 'U' ? this.tex.used : this.tex.star;
+      const m = DW.box(1, 1, 1.4, DW.mat(0xffffff, { map, roughness: 0.6, emissive: c === '?' || c === 'M' ? 0x553300 : 0, emissiveIntensity: 0.4 }));
+      m.position.set(i + 0.5, j + 0.5, 0); this.scene.add(m); this.blockMesh.set(i + ',' + j, m); return m;
+    },
+    buildDecor() {
+      const sc = this.scene;
+      for (let i = 0; i < 16; i++) { // heuvels en wolken op de achtergrond
+        const h = DW.sphere(rand(5, 10), DW.mat([0x9ae8a0, 0x7ad890, 0xb0f0b8][i % 3], { roughness: 1 }), { cast: false }); h.position.set(i * 12 - 10, -4, -22 - rand(0, 10)); h.scale.y = 0.7; sc.add(h);
+        const cl = new THREE.Group(); for (let k = 0; k < 3; k++) { const s = DW.sphere(rand(1, 1.8), DW.mat(0xffffff, { roughness: 1, emissive: 0xffffff, emissiveIntensity: 0.25 }), { cast: false }); s.position.set(k * 1.4, rand(-0.3, 0.3), 0); cl.add(s); }
+        cl.position.set(i * 12 + rand(-4, 4), rand(9, 14), -18 - rand(0, 8)); sc.add(cl);
+      }
+      for (let i = 0; i < 14; i++) { const x = rand(-4, 170); if (!this.T.has(Math.floor(x) + ',-1')) continue; const b = DW.sphere(0.6, DW.mat(0x3fbf5f, { roughness: 0.8 }), { cast: false }); b.position.set(x, 0.3, -1.3); b.scale.set(1.6, 1, 1); sc.add(b); }
+      // eindhuisje
+      const hs = new THREE.Group(); const wall = DW.box(5, 4, 3, DW.mat(0xffe0f0)); wall.position.y = 2; hs.add(wall);
+      const roof = DW.cone(3.8, 2.4, DW.mat(0xff5ea8)); roof.position.y = 5.2; roof.rotation.y = Math.PI / 4; hs.add(roof);
+      const door = DW.box(1.2, 2, 0.1, DW.mat(0x7a4a2a)); door.position.set(0, 1, 1.52); hs.add(door);
+      hs.position.set(166, 0, -1); sc.add(hs);
+    },
+    spawnEnt(e) {
+      const sc = this.scene;
+      if (e.t === 'walk') {
+        const g = DW.makeCharacter({ kind: 'robot', color: 0xff6a4a, scale: 0.55 }); sc.add(g); DW.setMood(g, 'angry');
+        this.enemies.push({ t: 'walk', g, x: e.x, y: e.y, vx: -WALK_V, vy: 0, w: 0.35, h: 1.0, alive: true, active: false });
+      } else if (e.t === 'shell') {
+        const g = new THREE.Group(); const dome = new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), DW.mat(0x3fd07a, { metalness: 0.5, roughness: 0.3 }));
+        dome.position.y = 0.3; g.add(dome); const rim = DW.cyl(0.58, 0.58, 0.12, DW.mat(0xfff0c0, { metalness: 0.4 })); rim.position.y = 0.3; g.add(rim);
+        for (let k = 0; k < 5; k++) { const bolt = DW.sphere(0.07, DW.mat(0xffe36e, { metalness: 0.8 })); const a = k * 1.256; bolt.position.set(Math.cos(a) * 0.35, 0.62, Math.sin(a) * 0.35); g.add(bolt); }
+        const head = new THREE.Group(); const sk = DW.sphere(0.24, DW.mat(0xc0c8e0, { metalness: 0.6, roughness: 0.3 })); head.add(sk); const eye = DW.box(0.3, 0.08, 0.1, new THREE.MeshBasicMaterial({ color: 0xff3355 })); eye.position.set(0, 0.03, 0.2); head.add(eye);
+        head.position.set(0, 0.55, 0.5); g.add(head); const feet = []; for (const s of [-1, 1]) { const f = DW.box(0.18, 0.22, 0.28, DW.mat(0x6a7aa0)); f.position.set(s * 0.28, 0.11, 0.1); g.add(f); feet.push(f); }
+        sc.add(g); this.enemies.push({ t: 'shell', g, head, feet, dome, x: e.x, y: e.y, vx: -WALK_V, vy: 0, w: 0.45, h: 0.95, alive: true, active: false, mode: 'walk', modeT: 0 });
+      } else if (e.t === 'drone') {
+        const g = new THREE.Group(); const body = DW.sphere(0.42, DW.mat(0xb18cff, { metalness: 0.5, roughness: 0.3 })); g.add(body);
+        const eye = DW.sphere(0.13, new THREE.MeshBasicMaterial({ color: 0xff3355 })); eye.position.set(0, 0, 0.38); g.add(eye);
+        const prop = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.04, 0.14), DW.mat(0xdddddd, { metalness: 0.7 })); prop.position.y = 0.55; g.add(prop); const st = DW.cyl(0.04, 0.04, 0.2, DW.mat(0xdddddd)); st.position.y = 0.45; g.add(st);
+        sc.add(g); this.enemies.push({ t: 'drone', g, prop, x: e.x, y: e.y, y0: e.y, x0: e.x, ph: rand(0, 6), w: 0.45, h: 0.8, alive: true, active: false });
+      } else if (e.t === 'check') {
+        const g = new THREE.Group(); const p = DW.cyl(0.06, 0.06, 2.6, DW.mat(0xdddddd, { metalness: 0.6 })); p.position.y = 1.3; g.add(p);
+        const f = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.0, 3), DW.mat(0xaaaaaa)); f.rotation.z = -Math.PI / 2; f.position.set(0.5, 2.3, 0); g.add(f);
+        g.position.set(e.x, 0, -0.2); sc.add(g); this.check = { x: e.x, flag: f, on: false };
+      } else if (e.t === 'flag') {
+        const g = new THREE.Group(); const p = DW.cyl(0.09, 0.09, 9, DW.mat(0xf0f0ff, { metalness: 0.6 })); p.position.y = 4.5; g.add(p);
+        const ball = DW.sphere(0.25, DW.mat(0xffd23c, { metalness: 0.7, emissive: 0xffa800, emissiveIntensity: 0.5 })); ball.position.y = 9.1; g.add(ball);
+        const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.1), new THREE.MeshStandardMaterial({ map: this.tex.star, side: THREE.DoubleSide })); fl.position.set(-0.85, 8.2, 0); g.add(fl);
+        const base = DW.box(1, 0.5, 1, DW.mat(0x9a8ac8)); base.position.y = 0.25; g.add(base);
+        g.position.set(e.x, 0, 0); sc.add(g); this.flag = { x: e.x, fl };
+      }
+    },
+    addStar(x, y) {
+      const sh = (this.starShape = this.starShape || (() => { const s = new THREE.Shape(); for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2 + Math.PI / 2, r = k % 2 ? 0.14 : 0.32; k ? s.lineTo(Math.cos(a) * r, Math.sin(a) * r) : s.moveTo(Math.cos(a) * r, Math.sin(a) * r); } const g = new THREE.ExtrudeGeometry(s, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 1 }); g.center(); return g; })());
+      this.starMat = this.starMat || new THREE.MeshStandardMaterial({ color: 0xffd23c, emissive: 0xffa800, emissiveIntensity: 0.9, metalness: 0.5, roughness: 0.3 });
+      const m = new THREE.Mesh(sh, this.starMat); m.position.set(x, y, 0); this.scene.add(m); this.starObjs.push({ m, x, y, taken: false });
+    },
+
+    // ---------------------------------------------------------------- tegels
+    solid(i, j) { return !!SOLID[this.T.get(i + ',' + j)]; },
+    // botst een doos (midden x, onderkant y) tegen tegels? geeft de eerste gevonden tegel terug
+    hitTiles(x, y, w, h) {
+      const i0 = Math.floor(x - w), i1 = Math.floor(x + w - 1e-4), j0 = Math.floor(y), j1 = Math.floor(y + h - 1e-4);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (this.solid(i, j)) return { i, j };
+      return null;
+    },
+    // beweegt een lichaam met tegelbotsing; geeft terug waar het tegenaan kwam
+    moveBody(b, dt) {
+      const out = { wall: false, ground: false, ceil: null };
+      b.x += b.vx * dt; let h = this.hitTiles(b.x, b.y, b.w, b.h);
+      if (h) { if (b.vx > 0) b.x = h.i - b.w - 1e-3; else if (b.vx < 0) b.x = h.i + 1 + b.w + 1e-3; out.wall = true; }
+      b.y += b.vy * dt; h = this.hitTiles(b.x, b.y, b.w, b.h);
+      if (h) {
+        if (b.vy <= 0) { b.y = h.j + 1; out.ground = true; }
+        else { b.y = h.j - b.h - 1e-3; out.ceil = this.ceilTile(b); }
+        b.vy = 0;
+      }
+      return out;
+    },
+    ceilTile(b) { // de tegel boven het hoofd die het dichtst bij het midden zit
+      const j = Math.floor(b.y + b.h + 0.01); let best = null, bd = 9;
+      for (let i = Math.floor(b.x - b.w); i <= Math.floor(b.x + b.w); i++) if (this.solid(i, j)) { const d = Math.abs(i + 0.5 - b.x); if (d < bd) { bd = d; best = { i, j }; } }
+      return best;
+    },
+    bump(i, j) {
+      const k = i + ',' + j, c = this.T.get(k), m = this.blockMesh.get(k); if (!m) return;
+      if (c === '?' || c === 'M') {
+        this.T.set(k, 'U'); m.material.map = this.tex.used; m.material.emissive.setHex(0); m.material.needsUpdate = true;
+        if (c === '?') { this.stars++; DW.sfx.play('pop'); this.popStar(i + 0.5, j + 1.2); }
+        else { this.items.push(this.makeShieldItem(i + 0.5, j + 1)); DW.sfx.play('good'); }
+      } else if (c === 'B' && this.shield) { // met schild kun je stenen blokken breken
+        this.T.delete(k); this.scene.remove(m); this.blockMesh.delete(k); DW.sfx.play('boom');
+        this.fx.emit(new THREE.Vector3(i + 0.5, j + 0.5, 0), { color: 0xc8643a, count: 24, speed: 5, life: 0.7, gravity: -14 }); this.drawTop(); return;
+      } else DW.sfx.play('kick');
+      this.bumps.push({ m, t: 0, y0: j + 0.5 });
+      for (const e of this.enemies) if (e.alive && e.t !== 'drone' && Math.abs(e.x - (i + 0.5)) < 0.9 && Math.abs(e.y - (j + 1)) < 0.2) this.killEnemy(e, 'flip');
+    },
+    popStar(x, y) { const m = new THREE.Mesh(this.starShape, this.starMat); m.position.set(x, y, 0); this.scene.add(m); this.items.push({ t: 'pop', m, vy: 9, life: 0.6 }); this.drawTop(); },
+    makeShieldItem(x, y) {
+      const g = new THREE.Group(); const s = DW.sphere(0.34, DW.mat(0x7af0ff, { emissive: 0x2a8aff, emissiveIntensity: 0.6, metalness: 0.4, roughness: 0.2 })); g.add(s);
+      const l = DW.makeLabel('🛡️', { size: 64, width: 0.6, stroke: null }); l.position.z = 0.4; g.add(l); g.position.set(x, y + 0.35, 0); this.scene.add(g);
+      return { t: 'shield', m: g, x, y, vx: 2.2, vy: 4, w: 0.3, h: 0.7, rise: 0.5 };
+    },
+
+    // ---------------------------------------------------------------- kind
+    respawn(first) {
+      const s = this.check && this.check.on ? { x: this.check.x, y: 0 } : this.spawn;
+      this.k = { x: s.x, y: s.y, vx: 0, vy: 0, w: KW, h: KH }; this.onGround = true; this.coyote = 0; this.jumpBuf = 0; this.inv = first ? 0 : INV_T; this.face = 1;
+      this.camX = this.k.x; this.camY = 2;
+      for (const e of this.enemies) if (e.alive && Math.abs(e.x - s.x) < 4) { e.alive = false; e.how = 'gone'; } // geen robot bovenop je laten landen
+    },
+    hurt() {
+      if (this.inv > 0 || this.over) return;
+      if (this.shield) { this.shield = false; this.inv = INV_T; DW.sfx.play('hit'); this.shaker.add(0.4); this.drawTop(); return; }
+      this.loseLife('Au! Een robot raakte je');
+    },
+    loseLife(msg) {
+      this.lives--; this.shield = false; DW.sfx.play('bad'); this.shaker.add(0.7); this.drawTop();
+      if (this.lives <= 0) return this.end(false, 'Al je hartjes zijn op...');
+      DW.hud.banner('-1 ❤️', { color: '#ff6a7a', sub: msg, ms: 1000 }); this.respawn(false);
+    },
+    end(won, sub) {
+      if (this.over) return; this.over = true; this.won = won; this.endT = 0;
+      DW.setMood(this.kid, won ? 'happy' : 'sad');
+      DW.hud.banner(won ? 'GEHAALD!' : 'VERLOREN!', { color: won ? '#ffd700' : '#ff5a6a', sub: sub, ms: 0 }); DW.sfx.play(won ? 'win' : 'lose');
+    },
+    onKeyDown(e) { if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && !e.repeat) this.jumpBuf = 0.12; },
+
+    killEnemy(e, how) {
+      e.alive = false; e.deadT = 0; e.how = how; this.kills++; this.drawTop();
+      if (how === 'stomp') { DW.sfx.play('pop'); } else { DW.sfx.play('hit'); e.vy = 8; e.vx = e.vx || 2; }
+      this.fx.emit(new THREE.Vector3(e.x, e.y + 0.5, 0), { color: 0xffe36e, count: 14, speed: 3, life: 0.5 });
+    },
+
+    // ---------------------------------------------------------------- update
+    update(dt, t) {
+      if (this.dead) return; this.t = t; dt = Math.min(dt, 0.05);
+      if (this.over) { this.endT += dt; if (this.won) this.goalAnim(dt); if (this.endT > 3 && !this.completed) { this.completed = true; this.api.complete(this.won); } }
+      if (this.running && !this.over) {
+        this.timeLeft -= dt; if (Math.ceil(this.timeLeft) !== this.lastSec) { this.lastSec = Math.ceil(this.timeLeft); this.drawTop(); }
+        if (this.timeLeft <= 0) this.end(false, 'De tijd is op!');
+        const n = Math.max(1, Math.ceil(dt / 0.012)); for (let s = 0; s < n && !this.over; s++) this.step(dt / n);
+      }
+      // effecten en animatie
+      for (let i = this.bumps.length - 1; i >= 0; i--) { const b = this.bumps[i]; b.t += dt; b.m.position.y = b.y0 + Math.sin(Math.min(1, b.t / 0.2) * Math.PI) * 0.3; if (b.t > 0.2) { b.m.position.y = b.y0; this.bumps.splice(i, 1); } }
+      for (const s of this.starObjs) if (!s.taken) s.m.rotation.y = t * 2.5 + s.x;
+      this.animate(dt, t); this.fx.update(dt); this.env.update(dt, t); this.updateCamera(dt);
+    },
+    step(dt) {
+      const K = DW.input.keys, k = this.k;
+      const left = K.ArrowLeft || K.KeyA, right = K.ArrowRight || K.KeyD, jumpHeld = K.Space || K.ArrowUp || K.KeyW;
+      const dir = (right ? 1 : 0) - (left ? 1 : 0); if (dir) this.face = dir;
+      const acc = this.onGround ? ACC : AIR_ACC;
+      if (dir) k.vx = clamp(k.vx + dir * acc * dt, -RUN, RUN); else k.vx = damp(k.vx, 0, this.onGround ? 14 : 3, dt);
+      // springen met buffer en 'coyote time' (net van de rand af mag nog)
+      this.jumpBuf = Math.max(0, this.jumpBuf - dt); this.coyote = this.onGround ? 0.1 : Math.max(0, this.coyote - dt);
+      if (this.jumpBuf > 0 && this.coyote > 0) { k.vy = JUMP_V; this.jumpBuf = 0; this.coyote = 0; this.onGround = false; DW.sfx.play('whoosh'); }
+      const g = k.vy > 0 && jumpHeld ? GRAV * 0.55 : GRAV; // langer vasthouden = hoger springen
+      k.vy = Math.max(-MAX_FALL, k.vy - g * dt);
+      const r = this.moveBody(k, dt); this.onGround = r.ground;
+      if (r.ceil) this.bump(r.ceil.i, r.ceil.j);
+      if (k.x < 0.4) { k.x = 0.4; k.vx = 0; }
+      if (this.inv > 0) this.inv = Math.max(0, this.inv - dt);
+      if (k.y < -6) { this.loseLife('Je viel in een kuil'); return; }
+      // checkpoint en finish
+      if (this.check && !this.check.on && k.x > this.check.x) { this.check.on = true; this.check.flag.material.color.setHex(0x7dff9a); DW.sfx.play('good'); DW.hud.banner('Checkpoint!', { color: '#7dff9a', ms: 900 }); }
+      if (this.flag && k.x > this.flag.x - 0.3) { this.goalY = k.y; this.end(true, 'Je bent langs alle robots gekomen! ⭐ ' + this.stars + ' · 🤖 ' + this.kills); return; }
+      // sterren
+      for (const s of this.starObjs) if (!s.taken && Math.abs(s.x - k.x) < 0.6 && s.y > k.y - 0.2 && s.y < k.y + k.h + 0.2) { s.taken = true; this.scene.remove(s.m); this.stars++; DW.sfx.play('pop'); this.fx.emit(s.m.position, { color: 0xffd23c, count: 8, speed: 2, life: 0.4, gravity: -3 }); this.drawTop(); }
+      this.stepItems(dt); this.stepEnemies(dt);
+    },
+    stepItems(dt) {
+      const k = this.k;
+      for (let i = this.items.length - 1; i >= 0; i--) {
+        const it = this.items[i];
+        if (it.t === 'pop') { it.life -= dt; it.vy -= 25 * dt; it.m.position.y += it.vy * dt; it.m.rotation.y += dt * 20; if (it.life <= 0) { this.scene.remove(it.m); this.items.splice(i, 1); } continue; }
+        if (it.rise > 0) { it.rise -= dt; it.m.position.y += dt * 1.6; if (it.rise <= 0) it.y = it.m.position.y - 0.35; continue; }
+        it.vy = Math.max(-MAX_FALL, it.vy - GRAV * dt); const r = this.moveBody(it, dt); if (r.wall) it.vx = -it.vx;
+        it.m.position.set(it.x, it.y + 0.35, 0); it.m.rotation.y += dt * 3;
+        if (it.y < -8) { this.scene.remove(it.m); this.items.splice(i, 1); continue; }
+        if (Math.abs(it.x - k.x) < 0.7 && it.y < k.y + k.h && it.y + it.h > k.y) {
+          this.scene.remove(it.m); this.items.splice(i, 1); this.shield = true; DW.sfx.play('win'); DW.hud.banner('SCHILD!', { color: '#7af0ff', sub: 'Eén botsing gratis, en je kunt stenen blokken breken', ms: 1400 }); this.drawTop();
+        }
+      }
+    },
+    stepEnemies(dt) {
+      const k = this.k;
+      for (const e of this.enemies) {
+        if (!e.alive) { if (e.how === 'flip') { e.deadT += dt; e.vy -= GRAV * dt; e.y += e.vy * dt; e.x += e.vx * dt; } else e.deadT += dt; continue; }
+        if (!e.active) { if (Math.abs(e.x - k.x) < 17) e.active = true; else continue; }
+        if (e.t === 'drone') { e.ph += dt; e.y = e.y0 + Math.sin(e.ph * 1.6) * 1.6; e.x = e.x0 + Math.sin(e.ph * 0.7) * 1.2; }
+        else {
+          if (e.t === 'shell' && e.mode === 'shell') { e.modeT += dt; e.vx = 0; if (e.modeT > 6) { e.mode = 'walk'; e.vx = k.x < e.x ? -WALK_V : WALK_V; } }
+          e.vy = Math.max(-MAX_FALL, e.vy - GRAV * dt); const r = this.moveBody(e, dt);
+          if (r.wall) { e.vx = -e.vx; if (e.mode === 'slide') DW.sfx.play('kick'); }
+          if (e.y < -8) { e.alive = false; e.how = 'gone'; continue; }
+          if (e.mode === 'slide') { e.slideT = (e.slideT || 0) + dt; for (const o of this.enemies) if (o !== e && o.alive && Math.abs(o.x - e.x) < o.w + e.w && Math.abs(o.y - e.y) < 0.9) this.killEnemy(o, 'flip'); }
+          else if (e.t === 'walk' || e.mode === 'walk') for (const o of this.enemies) if (o !== e && o.alive && o.t !== 'drone' && o.mode !== 'slide' && Math.abs(o.x - e.x) < o.w + e.w && Math.abs(o.y - e.y) < 0.5 && Math.sign(o.x - e.x) === Math.sign(e.vx)) e.vx = -e.vx;
+        }
+        // contact met het kind
+        if (Math.abs(e.x - k.x) < e.w + k.w && k.y < e.y + e.h && k.y + k.h > e.y) {
+          const stomp = k.vy < 0 && k.y > e.y + e.h * 0.45;
+          if (e.t === 'shell' && e.mode === 'shell') { // stilliggende bal: wegtrappen
+            e.mode = 'slide'; e.slideT = 0; e.vx = (k.x < e.x ? 1 : -1) * SHELL_V; DW.sfx.play('kick'); if (stomp) k.vy = 10; else k.x = e.x - Math.sign(e.vx) * (e.w + k.w + 0.05);
+          } else if (stomp) {
+            k.vy = K_BOUNCE(); this.fx.emit(new THREE.Vector3(e.x, e.y + e.h, 0), { color: 0xffffff, count: 10, speed: 3, life: 0.4 });
+            if (e.t === 'shell') { if (e.mode === 'slide') { e.mode = 'shell'; e.modeT = 0; e.vx = 0; DW.sfx.play('pop'); } else { e.mode = 'shell'; e.modeT = 0; e.vx = 0; DW.sfx.play('pop'); } }
+            else this.killEnemy(e, 'stomp');
+          } else if (!(e.mode === 'slide' && e.slideT < 0.25)) this.hurt();
+        }
+      }
+    },
+
+    // ---------------------------------------------------------------- tekenen
+    animate(dt, t) {
+      const k = this.k, kid = this.kid;
+      kid.position.set(k.x, k.y, 0); kid.rotation.y = damp(kid.rotation.y, this.over && this.won ? 0 : this.face > 0 ? Math.PI / 2 : -Math.PI / 2, 14, dt);
+      kid.visible = !(this.inv > 0 && Math.floor(this.inv * 14) % 2 === 1);
+      DW.animateCharacter(kid, t, this.onGround ? Math.min(1, Math.abs(k.vx) / 5) : 0.3, dt);
+      if (!this.onGround && !this.over) { const P = kid.userData.parts; P.armL.rotation.x = -2.4; P.armR.rotation.x = -0.6; }
+      this.shieldFx.visible = this.shield; if (this.shield) { this.shieldFx.position.set(k.x, k.y + 0.7, 0); this.shieldFx.material.opacity = 0.18 + Math.sin(t * 6) * 0.06; }
+      for (const e of this.enemies) {
+        const g = e.g; if (!g.visible) continue;
+        if (!e.alive) {
+          if (e.how === 'stomp') { g.scale.y = Math.max(0.15, g.scale.y - dt * 6); if (e.deadT > 0.6) g.visible = false; }
+          else if (e.how === 'flip') { g.rotation.z = Math.PI; g.position.set(e.x, e.y + 0.9, 0); if (e.deadT > 1.5) g.visible = false; }
+          else g.visible = false;
+          if (e.how === 'stomp') g.position.set(e.x, e.y, 0);
+          continue;
+        }
+        g.position.set(e.x, e.y + (e.t === 'drone' ? 0.4 : 0), 0);
+        if (e.t === 'walk') { g.rotation.y = e.vx < 0 ? -Math.PI / 2 : Math.PI / 2; DW.animateCharacter(g, t * 1.3, 1, dt); }
+        else if (e.t === 'shell') {
+          const inShell = e.mode !== 'walk'; e.head.visible = !inShell; e.feet.forEach((f) => { f.visible = !inShell; f.position.y = 0.11 + (inShell ? 0 : Math.abs(Math.sin(t * 10 + f.position.x * 9)) * 0.08); });
+          g.rotation.y = inShell ? (e.mode === 'slide' ? g.rotation.y + dt * 18 : g.rotation.y) : e.vx < 0 ? -Math.PI / 2 : Math.PI / 2;
+          if (e.mode === 'shell' && e.modeT > 4.5) g.position.x += Math.sin(t * 40) * 0.04; // wordt bijna wakker
+        } else if (e.t === 'drone') { e.prop.rotation.y += dt * 30; g.rotation.y = Math.sin(t) * 0.3; }
+      }
+      if (this.check && this.check.on) this.check.flag.rotation.x = Math.sin(t * 6) * 0.2;
+    },
+    goalAnim(dt) { // langs de paal naar beneden glijden en naar het huisje lopen
+      const k = this.k; if (k.y > 0.01 && this.endT < 1.2) { k.y = Math.max(0, k.y - dt * 6); k.x = this.flag.x - 0.35; }
+      else if (k.x < 166) { k.x += dt * 4; this.face = 1; this.onGround = true; }
+      if (this.flag.fl.position.y > 1.2) this.flag.fl.position.y -= dt * 6;
+    },
+    drawTop() {
+      const hearts = '❤️'.repeat(Math.max(0, this.lives)) + '🖤'.repeat(Math.max(0, LIVES - this.lives)) + (this.shield ? ' 🛡️' : '');
+      DW.hud.top(`<span class="dw-pill">🧱 Robotsprong</span><span class="dw-pill">${hearts}</span><span style="display:flex;gap:10px"><span class="dw-pill">⭐ ${this.stars}</span><span class="dw-pill">🤖 ${this.kills}</span><span class="dw-pill"${this.timeLeft < 30 ? ' style="color:#ff6a7a"' : ''}>⏱ ${Math.max(0, Math.ceil(this.timeLeft))}</span></span>`);
+    },
+    updateCamera(dt, snap) {
+      const c = this.camera, k = this.k, lam = snap ? 100 : 4;
+      const aheadX = k.x + this.face * 1.5;
+      this.camX = snap ? aheadX : damp(this.camX, aheadX, lam, dt); this.camY = snap ? Math.max(2.5, k.y + 1.5) : damp(this.camY, Math.max(2.5, k.y + 1.5), 2.5, dt);
+      const fit = c.aspect < 1.3 ? 1.3 / c.aspect : 1, off = this.shaker.update(dt);
+      c.position.set(this.camX + off.x, this.camY + 1.2 + off.y, 17 * Math.min(fit, 1.8)); c.lookAt(this.camX, this.camY, 0);
+      this.sun.position.set(this.camX + 6, 16, 10); this.sun.target.position.set(this.camX, 0, 0);
+    },
+    onResize(a) { this.camera.aspect = a; this.camera.updateProjectionMatrix(); },
+    destroy() { this.dead = true; },
+  };
+  const K_BOUNCE = () => (DW.input.keys.Space || DW.input.keys.ArrowUp || DW.input.keys.KeyW ? 15 : 10); // na een stomp: vasthouden = hoger
+
+  DW.registerLevel(11, level);
+})();
+
+</script>
+<script>/* src/level12.js */
+// level12.js - FINAL BOSS: MEESTER ROBOT (3 fases: ontwijken, steen-papier-schaar, rekenrace)
 (function () {
   const THREE = window.THREE, DW = window.DW;
   const R = 12, PR = 11.2, BOSSZ = -14, OX = 0, OZ = -11.5;
@@ -6422,7 +6794,7 @@
     },
     destroy() { this.dead = true; this.running = false; this.timers.length = 0; DW.hud.hideBanner(); if (this.ui) this.ui.forEach((e) => e.remove()); },
   };
-  DW.registerLevel(11, L);
+  DW.registerLevel(12, L);
 })();
 
 </script>
