@@ -896,7 +896,7 @@
         for (let i = 0; i < 2; i++) fx.emit(new V3(DW.rand(-12, 12), 0.1, DW.rand(-8, 8)), { color: 0xff6a20, count: 1, speed: 1.2, life: 2.6, gravity: 1.5 });
         fx.update(dt);
         const off = shaker.update(dt); camera.position.set(camBase.x + off.x + Math.sin(t * 0.3) * 0.5, camBase.y + off.y + (1 - e) * 1.5, camBase.z + off.z); camera.lookAt(0, 3.6 + e * 2.2, 0);
-        if (t > 3.4 && !btnShown) { btnShown = true; btn('GA DE STRIJD AAN!', () => { DW.sfx.play('good'); transition(() => startLevel(8), '#200000', 450); }, bot, false, 'dwf-startbtn'); }
+        if (t > 3.4 && !btnShown) { btnShown = true; btn('GA DE STRIJD AAN!', () => { DW.sfx.play('good'); transition(() => startLevel(BOSS), '#200000', 450); }, bot, false, 'dwf-startbtn'); }
       },
     };
   }
@@ -968,6 +968,7 @@
     layer.querySelectorAll('.dwf-dots button').forEach((d) => d.addEventListener('click', (e) => { e.stopPropagation(); const k = +d.dataset.lv; if (k === i) return; DW.sfx.play('click'); transition(() => gotoHub(k), '#000', 250); }));
     const bot = layer.querySelector('.dwf-bot'); const hint = bot.querySelector('.dwf-hint');
     const b = btn('START!', () => { DW.sfx.play('go'); transition(() => startLevel(i), '#000', 350); }, bot, false, 'dwf-startbtn'); bot.insertBefore(b, hint);
+    if (i !== BOSS) { const sk = btn('OVERSLAAN ⏭', () => { DW.sfx.play('click'); nextAfter(i); }, bot, true); bot.insertBefore(sk, hint); } // telt niet als gewonnen of verloren
   }
   function gotoResult(won, i) {
     setState('RESULT'); clearKeys(); const s = sceneHub(i, 'result', won); setStage(s); DW.hud.clear(); const m = meta(i);
@@ -1178,21 +1179,22 @@
     paused = true; clearKeys();
     confirmEl = document.createElement('div'); confirmEl.className = 'dwf-confirm';
     const card = document.createElement('div'); card.className = 'dw-card';
-    card.innerHTML = '<h2>Level stoppen?</h2><p>Je gaat terug naar de levelkaart. Dit level telt dan niet mee.</p>';
+    card.innerHTML = '<h2>Level stoppen?</h2><p>Stoppen = terug naar de levelkaart. Overslaan = door naar het volgende level. Dit level telt dan niet mee.</p>';
     const row = document.createElement('div'); row.className = 'row'; card.appendChild(row); confirmEl.appendChild(card);
     DW.hud.button('NEE, VERDER SPELEN', () => closeConfirm(), { parent: row, alt: true });
     DW.hud.button('JA, STOPPEN', () => quitLevel(), { parent: row });
+    if (G.idx !== BOSS) DW.hud.button('OVERSLAAN ⏭', () => quitLevel(true), { parent: row, alt: true });
     confirmEl.addEventListener('pointerdown', (e) => e.stopPropagation()); confirmEl.addEventListener('keydown', (e) => e.stopPropagation());
     root.appendChild(confirmEl);
   }
-  function quitLevel() {
+  function quitLevel(skip) {
     const i = G.idx; closeConfirm(); if (state !== 'PLAYING') return;
     runId++; done = true;
     transition(() => {
       clearTimers(); clearKeys();
       if (level) { const pv = level; level = null; try { pv.destroy && pv.destroy(); } catch (e) { console.error('level.destroy fout', e); } try { pv.scene && DW.disposeScene(pv.scene); } catch (e) { console.error(e); } pv.scene = null; }
       DW.hud.clear(); if (cur) { disposeStage(cur); cur = null; }
-      gotoHub(i);
+      if (skip) { if (i === BOSS - 1) gotoBoss(); else gotoHub(i + 1); } else gotoHub(i);
     }, '#000', 300);
   }
   function makeQuit() {
@@ -1235,7 +1237,7 @@
     };
     const qs = new URLSearchParams(location.search); const lv = parseInt(qs.get('level'), 10);
     last = performance.now(); rafId = requestAnimationFrame(frame);
-    if (lv >= 1 && lv <= 9) { G.won = 0; G.lost = 0; G.results = []; startLevel(lv - 1); }
+    if (lv >= 1 && lv <= NUM) { G.won = 0; G.lost = 0; G.results = []; startLevel(lv - 1); }
     else if (qs.get('intro') === '0') gotoTitle(); else gotoIntro();
   }
   function schedule() { setTimeout(boot, 0); }
@@ -6176,6 +6178,10 @@
   const wrap = (a) => { a = (a + Math.PI) % (Math.PI * 2); if (a < 0) a += Math.PI * 2; return a - Math.PI; };
   const NAMES = ['STEEN', 'PAPIER', 'SCHAAR'];
   const ICONS = ['✊', '✋', '✌️'];
+  // moeilijkheid (makkelijker gemaakt na het testen)
+  const P1_TIME = 20, P1_LIVES = 5, P1_STEP = 10, P1_MAXLVL = 2;   // ontwijken: 20 s, 5 hartjes, rustiger opbouw
+  const P2_WIN = 2, P2_LOSE = 3;                                   // steen-papier-schaar: jij 2 winst, robot moet er 3
+  const P3_WIN = 4, P3_LOSE = 6, P3_BOT = [5, 8];                  // rekenrace: jij 4 goed, robot 6; robot rekent 5 tot 8 s
   const _v = new THREE.Vector3();
 
   function mulberry(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -6416,15 +6422,15 @@
     // ================= PHASE 1 : ONTWIJKEN =================
     startP1() {
       if (this.dead) return; this.clearUI(); this.clearAttacks(); this.phase = 1; this.unsay();
-      this.p1 = { time: 0, lives: 3, inv: 0, spawnT: 1.2, order: DW.shuffle(['meteor', 'laser', 'orbs', 'ring']), idx: 0, lvl: 0, dead: false, lastLvl: 0 };
+      this.p1 = { time: 0, lives: P1_LIVES, inv: 0, spawnT: 1.2, order: DW.shuffle(['meteor', 'laser', 'orbs', 'ring']), idx: 0, lvl: 0, dead: false, lastLvl: 0 };
       this.setKid(0, 6, 1, Math.PI); DW.setMood(this.kid, 'idle');
       this.setCam([0, 11.5, 22], [0, 4.2, -6]); this.bossZT = BOSSZ;
-      DW.hud.top('<span class="dw-pill">FASE 1/3: ONTWIJKEN</span><span id="l9h" class="dw-pill" style="letter-spacing:3px"></span><span class="dw-pill" style="display:flex;align-items:center;gap:8px">&#9201; <span class="dw-bar" style="width:min(28vw,220px)"><i id="l9bar" style="width:0%"></i></span><b id="l9s" style="min-width:1.6em;text-align:right">30</b></span>');
-      DW.hud.bottom('WASD / pijltjes = bewegen &nbsp;&middot;&nbsp; overleef 30 seconden!');
+      DW.hud.top('<span class="dw-pill">FASE 1/3: ONTWIJKEN</span><span id="l9h" class="dw-pill" style="letter-spacing:3px"></span><span class="dw-pill" style="display:flex;align-items:center;gap:8px">&#9201; <span class="dw-bar" style="width:min(28vw,220px)"><i id="l9bar" style="width:0%"></i></span><b id="l9s" style="min-width:1.6em;text-align:right">' + P1_TIME + '</b></span>');
+      DW.hud.bottom('WASD / pijltjes = bewegen &nbsp;&middot;&nbsp; overleef ' + P1_TIME + ' seconden!');
       this.el = { h: document.getElementById('l9h'), bar: document.getElementById('l9bar'), s: document.getElementById('l9s') };
       this.drawHearts();
     },
-    drawHearts() { if (this.el && this.el.h) this.el.h.textContent = '❤️'.repeat(this.p1.lives) + '🖤'.repeat(3 - this.p1.lives); },
+    drawHearts() { if (this.el && this.el.h) this.el.h.textContent = '❤️'.repeat(this.p1.lives) + '🖤'.repeat(P1_LIVES - this.p1.lives); },
     hurt() {
       const s = this.p1; if (s.inv > 0 || s.dead) return;
       s.lives--; s.inv = 1.5; this.shaker.add(0.9); DW.sfx.play('hit'); this.drawHearts();
@@ -6549,7 +6555,7 @@
     },
     updateP1(dt, t) {
       const s = this.p1; if (s.dead) return;
-      s.time += dt; s.lvl = Math.min(3, Math.floor(s.time / 8));
+      s.time += dt; s.lvl = Math.min(P1_MAXLVL, Math.floor(s.time / P1_STEP));
       if (s.lvl > s.lastLvl) { s.lastLvl = s.lvl; DW.sfx.play('go'); this.bossReact('angry', 1, 0.5, 0.6); }
       // movement
       const a = DW.input.axis(); let ax = a.x, az = -a.y; const m = Math.hypot(ax, az) || 1; if (ax || az) { ax /= m; az /= m; }
@@ -6562,9 +6568,9 @@
       s.spawnT -= dt; if (s.spawnT <= 0) { this.spawnAttack(); s.spawnT = [2.0, 1.7, 1.4, 1.15][s.lvl] * DW.rand(0.9, 1.1); }
       this.updateAttacks(dt, t);
       if (s.inv > 0) { s.inv -= dt; this.kid.visible = s.inv <= 0 || Math.floor(s.inv * 14) % 2 === 0; }
-      if (this.el && this.el.bar) { this.el.bar.style.width = Math.min(100, (s.time / 30) * 100) + '%'; this.el.s.textContent = Math.max(0, Math.ceil(30 - s.time)); }
+      if (this.el && this.el.bar) { this.el.bar.style.width = Math.min(100, (s.time / P1_TIME) * 100) + '%'; this.el.s.textContent = Math.max(0, Math.ceil(P1_TIME - s.time)); }
       this.camPosT.x = this.kpos.x * 0.15;
-      if (s.time >= 30) { this.kid.visible = true; this.phaseDone(1); }
+      if (s.time >= P1_TIME) { this.kid.visible = true; this.phaseDone(1); }
     },
 
     // ================= PHASE 2 : STEEN PAPIER SCHAAR =================
@@ -6580,12 +6586,12 @@
       this.addUI(box); this.btns = [];
       for (let i = 0; i < 3; i++) { const b = DW.hud.button(ICONS[i] + ' ' + NAMES[i] + ' [' + (i + 1) + ']', () => this.pick(i), { parent: box, alt: i === 1, css: 'font-size:clamp(16px,3vw,32px);padding:.5em 1em' }); b.style.pointerEvents = 'auto'; this.btns.push(b); }
       this.setBtns(false);
-      this.setMsg('STEEN - PAPIER - SCHAAR!', '#ffd700'); DW.hud.bottom('Kies met de knoppen of toets 1 - 2 - 3 &nbsp;&middot;&nbsp; win 2 rondes!');
+      this.setMsg('STEEN - PAPIER - SCHAAR!', '#ffd700'); DW.hud.bottom('Kies met de knoppen of toets 1 - 2 - 3 &nbsp;&middot;&nbsp; win ' + P2_WIN + ' rondes!');
       this.after(1.6, () => { if (this.phase === 2) this.startRound(); });
     },
     drawP2Top() {
-      const dots = (n) => '●'.repeat(n) + '○'.repeat(2 - n);
-      DW.hud.top('<span class="dw-pill">FASE 2/3: STEEN-PAPIER-SCHAAR</span><span style="display:flex;gap:10px"><span class="dw-pill you">Jij ' + dots(this.p2.you) + '</span><span class="dw-pill bot">Robot ' + dots(this.p2.bot) + '</span></span>');
+      const dots = (n, max) => '●'.repeat(n) + '○'.repeat(Math.max(0, max - n));
+      DW.hud.top('<span class="dw-pill">FASE 2/3: STEEN-PAPIER-SCHAAR</span><span style="display:flex;gap:10px"><span class="dw-pill you">Jij ' + dots(this.p2.you, P2_WIN) + '</span><span class="dw-pill bot">Robot ' + dots(this.p2.bot, P2_LOSE) + '</span></span>');
     },
     setBtns(on) { this.btns.forEach((b, i) => { b.disabled = !on; b.style.opacity = on ? 1 : 0.55; if (on) b.style.transform = ''; }); },
     startRound() {
@@ -6632,8 +6638,8 @@
     },
     afterRound() {
       const s = this.p2; this.unsay(); DW.setMood(this.kid, 'idle'); s.state = 'wait';
-      if (s.you >= 2) { this.phaseDone(2); }
-      else if (s.bot >= 2) { this.setMsg('', '#fff'); this.say('FASE 2 OPNIEUW!', '#ff4d6d'); s.state = 'wait'; this.after(1.8, () => { if (!this.dead) { this.unsay(); this.startP2(); } }); }
+      if (s.you >= P2_WIN) { this.phaseDone(2); }
+      else if (s.bot >= P2_LOSE) { this.setMsg('', '#fff'); this.say('FASE 2 OPNIEUW!', '#ff4d6d'); s.state = 'wait'; this.after(1.8, () => { if (!this.dead) { this.unsay(); this.startP2(); } }); }
       else this.startRound();
     },
 
@@ -6651,17 +6657,17 @@
       this.addUI(pad);
       ['7', '8', '9', '4', '5', '6', '1', '2', '3', '⌫', '0', 'OK'].forEach((k) => { const b = DW.hud.button(k, () => this.key(k), { parent: pad, alt: k === 'OK', css: 'font-size:clamp(14px,2.2vw,22px);padding:.35em .8em;min-width:2.2em;border-radius:14px' }); b.style.pointerEvents = 'auto'; });
       DW.hud.bottom('Typ het antwoord met de cijfertoetsen &nbsp;&middot;&nbsp; Enter = versturen &nbsp;&middot;&nbsp; Backspace = wissen');
-      this.say('REKENRACE!', '#22e6ff', 'Wie eerst 5 goed heeft wint');
+      this.say('REKENRACE!', '#22e6ff', 'Haal ' + P3_WIN + ' goede antwoorden voordat de robot er ' + P3_LOSE + ' heeft');
       this.after(1.5, () => { if (this.phase === 3) { this.unsay(); this.newQuestion(); } });
     },
-    drawP3Top() { DW.hud.scoreboard('FASE 3/3: REKENRACE', this.p3.you + '/5', this.p3.bot + '/5'); },
+    drawP3Top() { DW.hud.scoreboard('FASE 3/3: REKENRACE', this.p3.you + '/' + P3_WIN, this.p3.bot + '/' + P3_LOSE); },
     drawInput() { const s = this.p3; this.ansBox.textContent = s.input === '' ? '?' : s.input; this.ansBox.style.opacity = s.input === '' ? 0.5 : 1; },
     newQuestion() {
       const s = this.p3; let a, b, op = DW.pick(['+', '-', '×']);
-      if (op === '×') { a = DW.randInt(2, 12); b = DW.randInt(2, 12); } else { a = DW.randInt(1, 20); b = DW.randInt(1, 20); }
+      if (op === '×') { a = DW.randInt(2, 10); b = DW.randInt(2, 10); } else { a = DW.randInt(1, 20); b = DW.randInt(1, 20); }
       if (op === '-' && b > a) { const x = a; a = b; b = x; }
       const ans = op === '+' ? a + b : op === '-' ? a - b : a * b;
-      s.q = { a, b, op, ans }; s.input = ''; s.state = 'ask'; s.botT = 0; s.botDelay = DW.rand(3, 6) * (1 - 0.05 * (s.you + s.bot)); s.el = 0;
+      s.q = { a, b, op, ans }; s.input = ''; s.state = 'ask'; s.botT = 0; s.botDelay = DW.rand(P3_BOT[0], P3_BOT[1]) * (1 - 0.03 * (s.you + s.bot)); s.el = 0;
       this.holoState.txt = a + ' ' + op + ' ' + b + ' ='; this.holoState.txt = a + ' ' + op + ' ' + b + ' ='; this.holoState.mode = 'ask'; this.holoState.prog = 0; this.holoState.ans = ''; this.drawHolo();
       this.drawInput(); this.bossReact('think', s.botDelay, 0, 0); DW.sfx.play('tick');
     },
@@ -6688,8 +6694,8 @@
       else { DW.sfx.play('lose'); DW.setMood(this.kid, 'sad'); this.bossReact('happy', 1.5, 0.4, 0.2); this.shaker.add(0.4); this.fx.emit(_v.set(0, 8, this.bossZ + 3), { color: 0xff5fd8, count: 40, speed: 7, life: 0.9 }); }
       this.after(1.5, () => {
         if (this.dead || this.phase !== 3) return; DW.setMood(this.kid, 'idle');
-        if (s.you >= 5) this.phaseDone(3);
-        else if (s.bot >= 5) { s.state = 'wait'; this.say('FASE 3 OPNIEUW!', '#ff4d6d'); this.after(1.8, () => { if (!this.dead) { this.unsay(); this.startP3(); } }); }
+        if (s.you >= P3_WIN) this.phaseDone(3);
+        else if (s.bot >= P3_LOSE) { s.state = 'wait'; this.say('FASE 3 OPNIEUW!', '#ff4d6d'); this.after(1.8, () => { if (!this.dead) { this.unsay(); this.startP3(); } }); }
         else this.newQuestion();
       });
     },

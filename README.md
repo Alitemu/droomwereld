@@ -12,8 +12,8 @@ Het hele spel is 3D (Three.js) en draait volledig in de browser vanuit één bes
 
 1. **Intro:** slaapkamer bij nacht, het portaal opent. Klik of druk op een toets om over te slaan.
 2. **Titelscherm:** knop **BEGIN DE DROOM!**
-3. **Levelkaart:** toont het huidige level met naam en uitleg, plus bolletjes 1 t/m 12 waarmee je naar elk level kunt springen. Knop **START!**
-4. **Level spelen:** elk level start met een aftelling. Met de ✕ knop of **Escape** kun je stoppen; het level telt dan niet mee.
+3. **Levelkaart:** toont het huidige level met naam en uitleg, plus bolletjes 1 t/m 12 waarmee je naar elk level kunt springen. Knop **OVERSLAAN ⏭** (behalve bij de eindbaas) gaat meteen door naar het volgende level. Knop **START!**
+4. **Level spelen:** elk level start met een aftelling. Met de ✕ knop of **Escape** pauzeer je: **stoppen** (terug naar de levelkaart) of **overslaan** (door naar het volgende level). Het level telt dan niet mee.
 5. **Resultaat:**
    * Gewonnen: **VOLGENDE UITDAGING**
    * Verloren: **OPNIEUW PROBEREN** of **OVERSLAAN** (overslaan kan niet bij de eindbaas)
@@ -122,9 +122,9 @@ Een platformspel van links naar rechts, in de stijl van de klassieke springspell
 
 Een gevecht in drie fases in een donkere arena. Faal je in een fase, dan begin je **alleen die fase** opnieuw. Je kunt de eindbaas dus niet verliezen, alleen opnieuw proberen.
 
-1. **Fase 1, Ontwijken:** overleef 30 seconden terwijl MEESTER ROBOT aanvalt met meteoren, laserstralen, energiebollen en schokgolven. Elke 8 seconden worden de aanvallen zwaarder. Je hebt 3 hartjes. Besturing: WASD of pijltjes.
-2. **Fase 2, Steen-papier-schaar:** eerste die 2 rondes wint. Je hebt 3 seconden per keuze; kies je niet, dan wordt er willekeurig gekozen. Besturing: knoppen of toetsen 1, 2, 3.
-3. **Fase 3, Rekenrace:** sommen met +, − en ×. Typ het antwoord voordat de robot het heeft (3 tot 6 seconden, steeds iets sneller). Eerste met 5 goede antwoorden wint. Besturing: cijfertoetsen, Enter en Backspace, of het cijferpaneel op het scherm.
+1. **Fase 1, Ontwijken:** overleef 20 seconden terwijl MEESTER ROBOT aanvalt met meteoren, laserstralen, energiebollen en schokgolven. Na 10 seconden worden de aanvallen één keer zwaarder. Je hebt 5 hartjes. Besturing: WASD of pijltjes.
+2. **Fase 2, Steen-papier-schaar:** jij moet 2 rondes winnen, de robot 3. Je hebt 3 seconden per keuze; kies je niet, dan wordt er willekeurig gekozen. Besturing: knoppen of toetsen 1, 2, 3.
+3. **Fase 3, Rekenrace:** sommen met +, − en ×. Typ het antwoord voordat de robot het heeft (5 tot 8 seconden, steeds iets sneller). Keersommen gaan tot 10 × 10. Jij hebt 4 goede antwoorden nodig, de robot 6. Besturing: cijfertoetsen, Enter en Backspace, of het cijferpaneel op het scherm.
 
 ---
 

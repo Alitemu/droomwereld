@@ -78,8 +78,8 @@ Elk level is een object dat zich registreert met `DW.registerLevel(n, level)`:
 
 1. **Intro:** slaapkamer bij nacht, portaal opent boven het bed. Overslaan met klik of toets.
 2. **Titel:** "DE DROOM WERELD", MEESTER ROBOT en het kind op een zwevend eiland. Knop **BEGIN DE DROOM!**
-3. **Levelkaart:** naam, icoon en uitleg van het level, gewonnen/verloren-telling, bolletjes 1 t/m 12 om direct naar een level te springen, knop **START!**
-4. **Level:** aftelling, spelen. De ✕ knop of Escape pauzeert en vraagt "Level stoppen?"; stoppen gaat terug naar de levelkaart en telt niet mee.
+3. **Levelkaart:** naam, icoon en uitleg van het level, gewonnen/verloren-telling, bolletjes 1 t/m 12 om direct naar een level te springen, knop **START!** en (behalve bij de eindbaas) **OVERSLAAN ⏭**.
+4. **Level:** aftelling, spelen. De ✕ knop of Escape pauzeert en vraagt "Level stoppen?" met NEE, VERDER SPELEN / JA, STOPPEN (terug naar de levelkaart) / OVERSLAAN (naar het volgende level; niet bij de eindbaas). Stoppen en overslaan tellen niet mee als gewonnen of verloren.
 5. **Resultaat:** bij winst **VOLGENDE UITDAGING**; bij verlies **OPNIEUW PROBEREN** en **OVERSLAAN** (niet bij de eindbaas).
 6. Na level 11: **eindbaas-intro** (rode arena, bliksem), daarna level 12.
 7. **Overwinning** (vuurwerk, ±6,5 s) en **ochtend**: "Het was allemaal een droom... maar jij WON!" met **OPNIEUW SPELEN**.
@@ -210,21 +210,22 @@ Elk level is een object dat zich registreert met `DW.registerLevel(n, level)`:
 Arena met een reusachtige robot met kroon. De eindbaas kan niet verloren worden: faal je in een fase, dan begint alleen die fase opnieuw ("FASE X OPNIEUW!"). Na fase 3 volgt de overwinning.
 
 ### Fase 1: Ontwijken
-* Overleef 30 s. De speler loopt rond op een ronde vloer (WASD/pijltjes).
-* 3 hartjes, na een treffer 1,5 s onkwetsbaar. 0 hartjes = fase 1 opnieuw.
+* De moeilijkheid staat bovenin `level12.js` als `P1_*`, `P2_*` en `P3_*` (makkelijker gemaakt na het testen).
+* Overleef `P1_TIME` = 20 s. De speler loopt rond op een ronde vloer (WASD/pijltjes).
+* `P1_LIVES` = 5 hartjes, na een treffer 1,5 s onkwetsbaar. 0 hartjes = fase 1 opnieuw.
 * Aanvallen in willekeurige volgorde: meteoren (vallen vaak dicht bij de speler), laserstralen die over de vloer zwaaien, energiebollen en schokgolfringen.
-* Elke 8 s gaat het niveau omhoog (max 3): meer lasers, meer en snellere bollen.
+* Elke `P1_STEP` = 10 s gaat het niveau omhoog (max `P1_MAXLVL` = 2): meer lasers, meer en snellere bollen.
 
 ### Fase 2: Steen-papier-schaar
-* Eerste die 2 rondes wint. 3 s bedenktijd per ronde; geen keuze = willekeurige keuze.
+* De speler moet `P2_WIN` = 2 rondes winnen, de robot `P2_LOSE` = 3. 3 s bedenktijd per ronde; geen keuze = willekeurige keuze.
 * De robot kiest volledig willekeurig.
 * Besturing: knoppen op het scherm of toetsen 1 (steen), 2 (papier), 3 (schaar).
 
 ### Fase 3: Rekenrace
-* Sommen: optellen en aftrekken met getallen 1 t/m 20 (nooit een negatieve uitkomst), vermenigvuldigen met 2 t/m 12.
-* De robot "rekent" 3 tot 6 s; die tijd wordt per gespeelde som 5% korter.
+* Sommen: optellen en aftrekken met getallen 1 t/m 20 (nooit een negatieve uitkomst), vermenigvuldigen met 2 t/m 10.
+* De robot "rekent" 5 tot 8 s (`P3_BOT`); die tijd wordt per gespeelde som 3% korter.
 * Fout antwoord: invoer wordt gewist, je mag opnieuw proberen zolang de robot nog niet klaar is.
-* Eerste met 5 punten wint.
+* De speler heeft `P3_WIN` = 4 goede antwoorden nodig, de robot `P3_LOSE` = 6.
 * Besturing: cijfertoetsen, Enter, Backspace of het cijferpaneel op het scherm.
 
 ---
