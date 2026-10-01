@@ -99,11 +99,11 @@ Een endless runner zoals Subway Surfers, op zwevende droomrails met 3 banen. Jij
 Schiet met pijl en boog op een 🎯 aan het eind van een grasveld. 5 rondes; per ronde schiet jij eerst en dan de robot, onder precies dezelfde omstandigheden.
 * Elke ronde staat het doel verder weg: 16, 20, 24, 28 en 32 meter. Vanaf ronde 2 waait er wind (vlag bij het doel en de balk bovenin). In ronde 4 en 5 zweeft het doel heen en weer.
 * De pijl zakt door de zwaartekracht en waait mee met de wind. Richt dus iets **boven** de roos en **tegen de wind in**, en bij een bewegend doel iets **vóór** het doel.
-* Hoe langer je vasthoudt, hoe strakker de boog (1 seconde = vol). Houd je langer dan ruim 2 seconden vast, dan gaat je arm trillen.
+* Hoe langer je vasthoudt, hoe strakker de boog (1 seconde = vol). Houd je langer dan 3,5 seconde vast, dan gaat je arm een beetje trillen.
 * Ronde 1 laat met een gele stippellijn zien waar je pijl heen gaat.
 * Punten: geel 10, rood 8, blauw 6, zwart 4, wit 2, mis 0.
 * **Winnen:** meer punten dan de robot na 5 rondes (de robot haalt gemiddeld ongeveer 30 van de 50).
-* **Besturing:** muis bewegen = richten, ingedrukt houden = spannen, loslaten = schieten. Toetsenbord: pijltjes of WASD = richten, SPATIE vasthouden = spannen. Touch: tik en houd vast, schuif om te richten, laat los.
+* **Besturing:** muis bewegen = richten, ingedrukt houden = spannen, loslaten = schieten. Toetsenbord: pijltjes of WASD = richten, SPATIE vasthouden = spannen. Touch: leg je vinger **ergens** op het scherm en houd vast, schuif om het vizier te bewegen (zoals een joystick, dus je vinger zit nooit op het vizier), laat los om te schieten. Alleen de eerste vinger telt.
 
 ### Level 11: Robotsprong 🧱
 Een platformspel van links naar rechts, in de stijl van de klassieke springspellen, maar dan met robots als vijanden.
