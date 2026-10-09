@@ -2,8 +2,8 @@
 # Bouwt android/build/droomwereld.apk uit ../index.html, zonder Android SDK of Gradle.
 # Nodig: Java 11+ (javac, keytool), python3, curl.
 #
-#   ./build.sh                    versie 1 / "1.0"
-#   VERSION_CODE=2 VERSION_NAME=1.1 ./build.sh
+#   ./build.sh                    versie 2 / "1.1" (standaard)
+#   VERSION_CODE=3 VERSION_NAME=1.2 ./build.sh
 #
 # Ondertekenen gebeurt met android/droomwereld.p12 (wordt eenmalig aangemaakt als hij ontbreekt).
 # Bewaar die sleutel goed: een update van de app moet met DEZELFDE sleutel ondertekend zijn,
@@ -11,8 +11,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION_CODE="${VERSION_CODE:-1}"
-VERSION_NAME="${VERSION_NAME:-1.0}"
+VERSION_CODE="${VERSION_CODE:-2}"   # bij elke nieuwe versie ophogen
+VERSION_NAME="${VERSION_NAME:-1.1}"
 KEYSTORE="${KEYSTORE:-droomwereld.p12}"
 KEYPASS="${KEYPASS:-droomwereld}"
 TOOLS="${TOOLS:-build/tools}"
@@ -37,14 +37,10 @@ java -cp "$TOOLS/dx.jar" com.android.dx.command.Main --dex --min-sdk-version=24 
 echo "3/5 manifest (versie $VERSION_NAME, code $VERSION_CODE)"
 python3 manifest.py "$B/apk/AndroidManifest.xml" "$VERSION_CODE" "$VERSION_NAME"
 cp ../index.html "$B/apk/assets/index.html"
+echo "   app-pictogram (resources.arsc + res/)"
+python3 resources.py res "$B/apk" >/dev/null
 echo "4/5 inpakken"
-python3 - "$B/apk" "$B/unsigned.apk" <<'EOF'
-import os, sys, zipfile
-src, out = sys.argv[1], sys.argv[2]
-with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-    for name in ['AndroidManifest.xml', 'classes.dex', 'assets/index.html']:
-        z.write(os.path.join(src, name), name)
-EOF
+python3 package.py "$B/apk" "$B/unsigned.apk"
 echo "5/5 ondertekenen"
 if [ ! -f "$KEYSTORE" ]; then
   keytool -genkeypair -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$KEYPASS" -keypass "$KEYPASS" \

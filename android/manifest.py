@@ -16,9 +16,11 @@ ATTR_IDS = {
     'screenOrientation': 0x0101001e, 'configChanges': 0x0101001f,
     'minSdkVersion': 0x0101020c, 'versionCode': 0x0101021b, 'versionName': 0x0101021c,
     'targetSdkVersion': 0x01010270, 'allowBackup': 0x01010280, 'hardwareAccelerated': 0x010102d3,
+    'icon': 0x01010002, 'drawable': 0x01010199, 'roundIcon': 0x0101052c,
 }
 
-STRING, INT_DEC, INT_HEX, BOOL = 0x03, 0x10, 0x11, 0x12
+REF, STRING, INT_DEC, INT_HEX, BOOL = 0x01, 0x03, 0x10, 0x11, 0x12
+ICON = 0x7f020000  # @mipmap/ic_launcher, zie resources.py
 SENSOR_LANDSCAPE = 6
 # orientation | screenSize | smallestScreenSize | keyboardHidden | keyboard | screenLayout | uiMode:
 # het spel draait gewoon door bij draaien of uitklappen in plaats van opnieuw te starten
@@ -30,7 +32,7 @@ def manifest_tree(version_code, version_name):
     return ('manifest', [(None, 'package', STRING, 'nl.droomwereld.app'),
                          A('versionCode', INT_DEC, version_code), A('versionName', STRING, version_name)], [
         ('uses-sdk', [A('minSdkVersion', INT_DEC, 24), A('targetSdkVersion', INT_DEC, 34)], []),
-        ('application', [A('label', STRING, 'De Droom Wereld'), A('allowBackup', BOOL, True),
+        ('application', [A('label', STRING, 'De Droom Wereld'), A('icon', REF, ICON), A('roundIcon', REF, ICON), A('allowBackup', BOOL, True),
                          A('hardwareAccelerated', BOOL, True)], [
             ('activity', [A('name', STRING, 'nl.droomwereld.app.MainActivity'), A('exported', BOOL, True),
                           A('screenOrientation', INT_DEC, SENSOR_LANDSCAPE),
@@ -42,6 +44,18 @@ def manifest_tree(version_code, version_name):
             ]),
         ]),
     ])
+
+
+def string_pool(strings):
+    """ResStringPool-chunk (UTF-16), ook gebruikt voor resources.arsc."""
+    data = b''; offsets = []
+    for s in strings:
+        offsets.append(len(data)); u = s.encode('utf-16-le')
+        data += struct.pack('<H', len(s)) + u + b'\0\0'
+    while len(data) % 4: data += b'\0'
+    hdr = 28; start = hdr + 4 * len(strings)
+    pool = struct.pack('<HHIIIIII', 0x0001, hdr, start + len(data), len(strings), 0, 0, start, 0)
+    return pool + b''.join(struct.pack('<I', o) for o in offsets) + data
 
 
 def encode(tree):
@@ -62,15 +76,7 @@ def encode(tree):
     strings = attr_names + [s for s in others if s not in attr_names]
     idx = {s: i for i, s in enumerate(strings)}
 
-    # string pool chunk (UTF-16)
-    data = b''; offsets = []
-    for s in strings:
-        offsets.append(len(data)); u = s.encode('utf-16-le')
-        data += struct.pack('<H', len(s)) + u + b'\0\0'
-    while len(data) % 4: data += b'\0'
-    hdr = 28; start = hdr + 4 * len(strings)
-    pool = struct.pack('<HHIIIIII', 0x0001, hdr, start + len(data), len(strings), 0, 0, start, 0)
-    pool += b''.join(struct.pack('<I', o) for o in offsets) + data
+    pool = string_pool(strings)
 
     resmap = struct.pack('<HHI', 0x0180, 8, 8 + 4 * len(attr_names)) + b''.join(struct.pack('<I', ATTR_IDS[n]) for n in attr_names)
 
