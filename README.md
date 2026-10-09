@@ -142,3 +142,16 @@ Werkt met toetsenbord en muis én op touchscreens (virtuele joystick en actiekno
 ## Hoe te spelen
 
 Open `index.html` in een moderne browser (Chrome, Edge, Firefox of Safari). Er is geen server of installatie nodig.
+
+---
+
+## Android-app
+
+In de map `android/` zit een kleine Android-app die het spel schermvullend en offline laat zien (WebView met `index.html` als ingebouwd bestand).
+
+* **Bouwen:** `android/build.sh` maakt `android/build/droomwereld.apk` (ongeveer 300 KB). Nodig: Java 11 of hoger, Python 3 en internet voor twee hulpbibliotheken van Maven Central. De Android SDK en Gradle zijn **niet** nodig: het manifest wordt door `android/manifest.py` zelf in het binaire formaat geschreven, de code wordt met dx omgezet en de handtekening (v2) wordt gezet met Google's apksig.
+* **Nieuwe versie:** `VERSION_CODE=2 VERSION_NAME=1.1 android/build.sh`. Het versienummer (code) moet bij elke update hoger zijn.
+* **Sleutel:** de app wordt ondertekend met `android/droomwereld.p12` (wachtwoord `droomwereld`). Die staat bewust niet in Git. Bewaar hem goed: een update moet met **dezelfde** sleutel ondertekend zijn, anders moet de oude app eerst verwijderd worden en is de bewaarde voortgang weg.
+* **Werking:** Android 7.0 of nieuwer, liggend scherm (draait mee tussen beide liggende standen), scherm blijft aan tijdens het spelen. De terugknop opent tijdens een level het pauzescherm en sluit de app op de andere schermen.
+* **Installeren:** zet het APK-bestand op de telefoon en open het. Android vraagt eenmalig toestemming om apps van deze bron te installeren. Play Protect kan waarschuwen dat de ontwikkelaar onbekend is; kies dan "Toch installeren".
+* **Nog niet:** een eigen app-pictogram (de app krijgt het standaardpictogram van Android).
